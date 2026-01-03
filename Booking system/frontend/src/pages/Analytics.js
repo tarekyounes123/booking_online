@@ -45,13 +45,16 @@ const Analytics = () => {
     return sum + (isNaN(amount) ? 0 : amount);
   }, 0);
 
-  // Calculate revenue from completed appointments (using service price)
+  // Calculate revenue from completed appointments (using discounted price from appointment)
   const completedAppointments = appointments.filter(app => app.status === 'completed');
   const appointmentRevenue = completedAppointments.reduce((sum, appointment) => {
-    // Get the service price for this appointment
-    const service = services.find(s => s.id === appointment.serviceId);
-    const servicePrice = service ? parseFloat(service.price) : 0;
-    return sum + (isNaN(servicePrice) ? 0 : servicePrice);
+    // Use the discounted price from the appointment if available, otherwise use original service price
+    const appointmentPrice = appointment.discountedPrice !== null && appointment.discountedPrice !== undefined
+      ? parseFloat(appointment.discountedPrice)
+      : (appointment.originalPrice !== null && appointment.originalPrice !== undefined
+          ? parseFloat(appointment.originalPrice)
+          : 0);
+    return sum + (isNaN(appointmentPrice) ? 0 : appointmentPrice);
   }, 0);
 
   // Total revenue is the sum of both payment revenue and appointment revenue
@@ -60,7 +63,15 @@ const Analytics = () => {
   // Calculate analytics data
   const revenueByService = services.map(service => {
     const serviceAppointments = appointments.filter(app => app.serviceId === service.id && app.status === 'completed');
-    const serviceRevenue = serviceAppointments.reduce((sum, app) => sum + parseFloat(service.price), 0);
+    const serviceRevenue = serviceAppointments.reduce((sum, app) => {
+      // Use the discounted price from the appointment if available, otherwise use original service price
+      const appointmentPrice = app.discountedPrice !== null && app.discountedPrice !== undefined
+        ? parseFloat(app.discountedPrice)
+        : (app.originalPrice !== null && app.originalPrice !== undefined
+            ? parseFloat(app.originalPrice)
+            : 0);
+      return sum + (isNaN(appointmentPrice) ? 0 : appointmentPrice);
+    }, 0);
     return {
       name: service.name,
       revenue: serviceRevenue,
@@ -72,9 +83,13 @@ const Analytics = () => {
     .filter(app => app.status === 'completed')
     .reduce((acc, app) => {
       const month = new Date(app.date).toLocaleString('default', { month: 'short', year: 'numeric' });
-      const service = services.find(s => s.id === app.serviceId);
-      const amount = service ? parseFloat(service.price) : 0;
-      
+      // Use the discounted price from the appointment if available, otherwise use original service price
+      const amount = app.discountedPrice !== null && app.discountedPrice !== undefined
+        ? parseFloat(app.discountedPrice)
+        : (app.originalPrice !== null && app.originalPrice !== undefined
+            ? parseFloat(app.originalPrice)
+            : 0);
+
       if (acc[month]) {
         acc[month] += amount;
       } else {

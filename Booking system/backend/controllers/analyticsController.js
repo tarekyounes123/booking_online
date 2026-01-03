@@ -14,14 +14,22 @@ exports.getFinancialAnalytics = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Get date range from query parameters (optional)
-  const { startDate, endDate } = req.query;
-  
+  // Get date range and status from query parameters (optional)
+  const { startDate, endDate, status } = req.query;
+
   const whereClause = {};
   if (startDate || endDate) {
     whereClause.date = {};
     if (startDate) whereClause.date[Op.gte] = new Date(startDate);
     if (endDate) whereClause.date[Op.lte] = new Date(endDate);
+  }
+
+  // Only include completed appointments for revenue calculations by default
+  // But allow override with status parameter
+  if (status) {
+    whereClause.status = status;
+  } else {
+    whereClause.status = 'completed'; // Default to completed for revenue
   }
 
   // Calculate total revenue metrics
@@ -46,9 +54,10 @@ exports.getFinancialAnalytics = asyncHandler(async (req, res, next) => {
   let totalAppointmentsWithDiscount = 0;
 
   appointments.forEach(appointment => {
+    // Use the stored discounted price if available, otherwise calculate it
     const originalPrice = parseFloat(appointment.originalPrice || appointment.Service.price);
     const discountAmount = parseFloat(appointment.discountAmount || 0);
-    const discountedPrice = parseFloat(appointment.discountedPrice || originalPrice);
+    const discountedPrice = parseFloat(appointment.discountedPrice || (originalPrice - discountAmount));
 
     totalOriginalRevenue += originalPrice;
     totalDiscountAmount += discountAmount;
@@ -111,7 +120,7 @@ exports.getPromotionAnalytics = asyncHandler(async (req, res, next) => {
     include: [
       {
         model: Appointment,
-        attributes: ['id', 'originalPrice', 'discountedPrice', 'discountAmount', 'date']
+        attributes: ['id', 'originalPrice', 'discountedPrice', 'discountAmount', 'date', 'status']
       }
     ]
   });
@@ -120,11 +129,16 @@ exports.getPromotionAnalytics = asyncHandler(async (req, res, next) => {
     let totalDiscountAmount = 0;
     let totalOriginalRevenue = 0;
     let totalDiscountedRevenue = 0;
-    
+    let completedAppointments = 0;
+
     promotion.Appointments.forEach(appointment => {
-      totalOriginalRevenue += parseFloat(appointment.originalPrice || 0);
-      totalDiscountAmount += parseFloat(appointment.discountAmount || 0);
-      totalDiscountedRevenue += parseFloat(appointment.discountedPrice || 0);
+      // Only count completed appointments for revenue calculations
+      if (appointment.status === 'completed') {
+        totalOriginalRevenue += parseFloat(appointment.originalPrice || 0);
+        totalDiscountAmount += parseFloat(appointment.discountAmount || 0);
+        totalDiscountedRevenue += parseFloat(appointment.discountedPrice || 0);
+        completedAppointments++;
+      }
     });
 
     return {
@@ -139,7 +153,8 @@ exports.getPromotionAnalytics = asyncHandler(async (req, res, next) => {
       totalDiscountAmount: totalDiscountAmount.toFixed(2),
       totalOriginalRevenue: totalOriginalRevenue.toFixed(2),
       totalDiscountedRevenue: totalDiscountedRevenue.toFixed(2),
-      appointments: promotion.Appointments.length
+      appointments: promotion.Appointments.length,
+      completedAppointments: completedAppointments
     };
   });
 
@@ -160,21 +175,25 @@ exports.getAppointmentAnalytics = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const { startDate, endDate, withDiscount } = req.query;
-  
+  const { startDate, endDate, withDiscount, status } = req.query;
+
   const whereClause = {};
   if (startDate || endDate) {
     whereClause.date = {};
     if (startDate) whereClause.date[Op.gte] = new Date(startDate);
     if (endDate) whereClause.date[Op.lte] = new Date(endDate);
   }
-  
+
   if (withDiscount !== undefined) {
     if (withDiscount === 'true') {
       whereClause.discountAmount = { [Op.gt]: 0 };
     } else if (withDiscount === 'false') {
       whereClause.discountAmount = { [Op.eq]: 0 };
     }
+  }
+
+  if (status) {
+    whereClause.status = status;
   }
 
   const appointments = await Appointment.findAll({
