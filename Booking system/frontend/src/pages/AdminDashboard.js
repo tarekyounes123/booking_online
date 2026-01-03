@@ -424,99 +424,105 @@ const handleDeletePayment = async (paymentId) => {
     }, 0);
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography component="h1" variant="h3" gutterBottom className="fw-bold">
+    <Container maxWidth="lg" sx={{ mt: 2, mb: 4, px: { xs: 1, sm: 2 } }}>
+      <Box sx={{ textAlign: 'center', mb: 3 }}>
+        <Typography component="h1" variant="h4" gutterBottom className="fw-bold" sx={{ fontSize: { xs: '1.8rem', sm: '2rem', md: '2.5rem' } }}>
           Admin Dashboard
         </Typography>
-        <Typography variant="h6" color="text.secondary">
+        <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
           Manage your system and monitor business performance
         </Typography>
       </Box>
 
-      {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* Stats Cards - Responsive Grid */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Paper
             sx={{
-              p: 3,
+              p: 2,
               textAlign: 'center',
               borderRadius: 3,
               boxShadow: 2,
               backgroundColor: 'primary.light',
-              color: 'primary.contrastText'
+              color: 'primary.contrastText',
+              minHeight: 100
             }}
           >
-            <Typography variant="h4" className="fw-bold">
+            <Typography variant="h5" className="fw-bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
               {appointments.length}
             </Typography>
-            <Typography variant="body2">Total Appointments</Typography>
+            <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>Total Appointments</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Paper
             sx={{
-              p: 3,
+              p: 2,
               textAlign: 'center',
               borderRadius: 3,
               boxShadow: 2,
               backgroundColor: 'success.light',
-              color: 'success.contrastText'
+              color: 'success.contrastText',
+              minHeight: 100
             }}
           >
-            <Typography variant="h4" className="fw-bold">
+            <Typography variant="h5" className="fw-bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
               {users.length}
             </Typography>
-            <Typography variant="body2">Total Users</Typography>
+            <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>Total Users</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Paper
             sx={{
-              p: 3,
+              p: 2,
               textAlign: 'center',
               borderRadius: 3,
               boxShadow: 2,
               backgroundColor: 'info.light',
-              color: 'info.contrastText'
+              color: 'info.contrastText',
+              minHeight: 100
             }}
           >
-            <Typography variant="h4" className="fw-bold">
+            <Typography variant="h5" className="fw-bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
               ${revenue.toFixed(2)}
             </Typography>
-            <Typography variant="body2">Total Revenue</Typography>
+            <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>Total Revenue</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Paper
             sx={{
-              p: 3,
+              p: 2,
               textAlign: 'center',
               borderRadius: 3,
               boxShadow: 2,
               backgroundColor: 'warning.light',
-              color: 'warning.contrastText'
+              color: 'warning.contrastText',
+              minHeight: 100
             }}
           >
-            <Typography variant="h4" className="fw-bold">
+            <Typography variant="h5" className="fw-bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
               {pendingAppointments.length}
             </Typography>
-            <Typography variant="body2">Pending Appointments</Typography>
+            <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>Pending Appointments</Typography>
           </Paper>
         </Grid>
       </Grid>
 
-      {/* Tabs */}
+      {/* Tabs - Responsive */}
       <Paper sx={{ mb: 3, borderRadius: 3, boxShadow: 2 }}>
         <Tabs
           value={activeTab}
           onChange={handleTabChange}
-          centered
+          variant="scrollable"
+          scrollButtons="auto"
           sx={{
             '& .MuiTab-root': {
               textTransform: 'none',
               fontWeight: 'bold',
-              fontSize: '1rem'
+              fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+              minWidth: { xs: 70, sm: 80, md: 100 }
             }
           }}
         >
@@ -531,15 +537,26 @@ const handleDeletePayment = async (paymentId) => {
 
       {/* Tab Content */}
       {activeTab === 0 && (
-        <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" className="fw-bold">
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 1
+          }}>
+            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
               Appointments
             </Typography>
             <Button
               variant="contained"
               onClick={() => alert('New appointment functionality would go here')}
-              sx={{ borderRadius: 2, fontWeight: 'bold' }}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add New Appointment
             </Button>
@@ -551,23 +568,25 @@ const handleDeletePayment = async (paymentId) => {
               </div>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {appointments.map((appointment) => (
                 <Grid item xs={12} key={appointment.id}>
                   <Paper
                     sx={{
-                      p: 3,
+                      p: 2,
                       borderRadius: 2,
                       display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'flex-start',
+                      gap: 2
                     }}
                   >
-                    <Box>
-                      <Typography variant="h6" className="fw-bold">
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
                         {appointment.Service?.name}
                       </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1 }}>
+                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
                         Customer: {appointment.User?.firstName} {appointment.User?.lastName}<br />
                         Phone: {appointment.User?.phone || 'N/A'}<br />
                         Date: {new Date(appointment.date).toLocaleDateString()}<br />
@@ -580,16 +599,38 @@ const handleDeletePayment = async (paymentId) => {
                             appointment.status === 'canceled' ? 'error' : 'default'
                           }
                           size="small"
-                          sx={{ borderRadius: 2, ml: 1 }}
+                          sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
                         />
                       </Typography>
                     </Box>
-                    <Box>
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'row', sm: 'column' },
+                      gap: 1,
+                      flexShrink: 0
+                    }}>
+                      {appointment.User?.phone && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => window.open(`https://wa.me/${appointment.User.phone.replace(/\D/g, '')}`, '_blank')}
+                          sx={{
+                            borderRadius: 2,
+                            whiteSpace: 'nowrap',
+                            backgroundColor: '#25D366',
+                            color: 'white',
+                            '&:hover': { backgroundColor: '#128C7E' },
+                            minWidth: 'auto'
+                          }}
+                        >
+                          WhatsApp
+                        </Button>
+                      )}
                       <Button
                         variant="contained"
                         size="small"
                         onClick={() => navigate(`/appointments/${appointment.id}`)}
-                        sx={{ borderRadius: 2, mr: 1 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         View Details
                       </Button>
@@ -597,7 +638,7 @@ const handleDeletePayment = async (paymentId) => {
                         variant="outlined"
                         size="small"
                         onClick={() => alert('Edit functionality would go here')}
-                        sx={{ borderRadius: 2 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         Edit
                       </Button>
@@ -723,15 +764,26 @@ const handleDeletePayment = async (paymentId) => {
       </Dialog>
 
       {activeTab === 1 && (
-        <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" className="fw-bold">
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 1
+          }}>
+            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
               Users
             </Typography>
             <Button
               variant="contained"
               onClick={() => alert('New user functionality would go here')}
-              sx={{ borderRadius: 2, fontWeight: 'bold' }}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add New User
             </Button>
@@ -743,39 +795,63 @@ const handleDeletePayment = async (paymentId) => {
               </div>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {users.map((user) => (
                 <Grid item xs={12} key={user.id}>
                   <Paper
                     sx={{
-                      p: 3,
+                      p: 2,
                       borderRadius: 2,
                       display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'flex-start',
+                      gap: 2
                     }}
                   >
-                    <Box>
-                      <Typography variant="h6" className="fw-bold">
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
                         {user.firstName} {user.lastName}
                       </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1 }}>
+                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
                         {user.email}<br />
                         Role: <Chip
                           label={user.role}
                           color={user.role === 'admin' ? 'primary' : 'default'}
                           size="small"
-                          sx={{ borderRadius: 2, ml: 1 }}
+                          sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
                         /><br />
                         Joined: {new Date(user.createdAt).toLocaleDateString()}
                       </Typography>
                     </Box>
-                    <Box>
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'row', sm: 'column' },
+                      gap: 1,
+                      flexShrink: 0
+                    }}>
+                      {user.phone && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => window.open(`https://wa.me/${user.phone.replace(/\D/g, '')}`, '_blank')}
+                          sx={{
+                            borderRadius: 2,
+                            whiteSpace: 'nowrap',
+                            backgroundColor: '#25D366',
+                            color: 'white',
+                            '&:hover': { backgroundColor: '#128C7E' },
+                            minWidth: 'auto'
+                          }}
+                        >
+                          WhatsApp
+                        </Button>
+                      )}
                       <Button
                         variant="contained"
                         size="small"
                         onClick={() => handleViewUserDetails(user)}
-                        sx={{ borderRadius: 2, mr: 1 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         View Details
                       </Button>
@@ -783,7 +859,7 @@ const handleDeletePayment = async (paymentId) => {
                         variant="outlined"
                         size="small"
                         onClick={() => alert('Edit functionality would go here')}
-                        sx={{ borderRadius: 2 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         Edit
                       </Button>
@@ -859,15 +935,26 @@ const handleDeletePayment = async (paymentId) => {
 </Dialog>
 
       {activeTab === 2 && (
-        <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" className="fw-bold">
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 1
+          }}>
+            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
               Services
             </Typography>
             <Button
               variant="contained"
               onClick={handleOpenNewServiceDialog}
-              sx={{ borderRadius: 2, fontWeight: 'bold' }}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add New Service
             </Button>
@@ -879,35 +966,42 @@ const handleDeletePayment = async (paymentId) => {
               </div>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {services.map((service) => (
                 <Grid item xs={12} key={service.id}>
                   <Paper
                     sx={{
-                      p: 3,
+                      p: 2,
                       borderRadius: 2,
                       display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'flex-start',
+                      gap: 2
                     }}
                   >
-                    <Box>
-                      <Typography variant="h6" className="fw-bold">
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
                         {service.name}
                       </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1 }}>
+                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
                         Description: {service.description}<br/>
                         Price: ${service.price}<br />
                         Duration: {service.duration} min<br />
                         Category: {service.category}
                       </Typography>
                     </Box>
-                    <Box>
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'row', sm: 'column' },
+                      gap: 1,
+                      flexShrink: 0
+                    }}>
                       <Button
                         variant="contained"
                         size="small"
                         onClick={() => handleViewServiceDetails(service)}
-                        sx={{ borderRadius: 2, mr: 1 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         Edit
                       </Button>
@@ -915,7 +1009,7 @@ const handleDeletePayment = async (paymentId) => {
                         variant="outlined"
                         size="small"
                         onClick={() => alert('Delete functionality would go here')}
-                        sx={{ borderRadius: 2 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                         color="error"
                       >
                         Delete
@@ -1109,15 +1203,26 @@ const handleDeletePayment = async (paymentId) => {
 
 
       {activeTab === 3 && (
-        <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" className="fw-bold">
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 1
+          }}>
+            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
               Staff
             </Typography>
             <Button
               variant="contained"
               onClick={handleOpenNewStaffDialog}
-              sx={{ borderRadius: 2, fontWeight: 'bold' }}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add New Staff
             </Button>
@@ -1129,34 +1234,58 @@ const handleDeletePayment = async (paymentId) => {
               </div>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {staff.map((staffMember) => (
                 <Grid item xs={12} key={staffMember.id}>
                   <Paper
                     sx={{
-                      p: 3,
+                      p: 2,
                       borderRadius: 2,
                       display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'flex-start',
+                      gap: 2
                     }}
                   >
-                    <Box>
-                      <Typography variant="h6" className="fw-bold">
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
                         {staffMember.User?.firstName} {staffMember.User?.lastName}
                       </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1 }}>
+                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
                         Specialization: {staffMember.specialization || 'N/A'}<br />
                         Experience: {staffMember.experience || 'N/A'} years<br />
                         Email: {staffMember.User?.email}
                       </Typography>
                     </Box>
-                    <Box>
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'row', sm: 'column' },
+                      gap: 1,
+                      flexShrink: 0
+                    }}>
+                      {staffMember.User?.phone && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => window.open(`https://wa.me/${staffMember.User.phone.replace(/\D/g, '')}`, '_blank')}
+                          sx={{
+                            borderRadius: 2,
+                            whiteSpace: 'nowrap',
+                            backgroundColor: '#25D366',
+                            color: 'white',
+                            '&:hover': { backgroundColor: '#128C7E' },
+                            minWidth: 'auto'
+                          }}
+                        >
+                          WhatsApp
+                        </Button>
+                      )}
                       <Button
                         variant="contained"
                         size="small"
                         onClick={() => handleViewStaffDetails(staffMember)}
-                        sx={{ borderRadius: 2, mr: 1 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         Edit
                       </Button>
@@ -1164,7 +1293,7 @@ const handleDeletePayment = async (paymentId) => {
                         variant="outlined"
                         size="small"
                         onClick={() => alert('Delete functionality would go here')}
-                        sx={{ borderRadius: 2 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                         color="error"
                       >
                         Delete
@@ -1179,15 +1308,26 @@ const handleDeletePayment = async (paymentId) => {
       )}
 
       {activeTab === 4 && (
-        <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" className="fw-bold">
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 1
+          }}>
+            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
               Payments
             </Typography>
             <Button
               variant="contained"
               onClick={() => alert('New payment functionality would go here')}
-              sx={{ borderRadius: 2, fontWeight: 'bold' }}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add New Payment
             </Button>
@@ -1199,35 +1339,59 @@ const handleDeletePayment = async (paymentId) => {
               </div>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {payments.map((payment) => (
                 <Grid item xs={12} key={payment.id}>
                   <Paper
                     sx={{
-                      p: 3,
+                      p: 2,
                       borderRadius: 2,
                       display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'flex-start',
+                      gap: 2
                     }}
                   >
-                    <Box>
-                      <Typography variant="h6" className="fw-bold">
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
                         ${payment.amount} - {payment.status}
                       </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1 }}>
+                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
                         Appointment ID: {payment.appointmentId}<br />
                         User: {payment.Appointment?.User?.firstName} {payment.Appointment?.User?.lastName}<br />
                         Paid At: {payment.paidAt ? new Date(payment.paidAt).toLocaleString() : 'N/A'}<br />
                         Method: {payment.paymentMethod || 'N/A'}
                       </Typography>
                     </Box>
-                    <Box>
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'row', sm: 'column' },
+                      gap: 1,
+                      flexShrink: 0
+                    }}>
+                      {payment.Appointment?.User?.phone && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => window.open(`https://wa.me/${payment.Appointment.User.phone.replace(/\D/g, '')}`, '_blank')}
+                          sx={{
+                            borderRadius: 2,
+                            whiteSpace: 'nowrap',
+                            backgroundColor: '#25D366',
+                            color: 'white',
+                            '&:hover': { backgroundColor: '#128C7E' },
+                            minWidth: 'auto'
+                          }}
+                        >
+                          WhatsApp
+                        </Button>
+                      )}
                       <Button
                         variant="contained"
                         size="small"
                         onClick={() => handleViewPaymentDetails(payment)}
-                        sx={{ borderRadius: 2, mr: 1 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         View Details
                       </Button>
@@ -1235,7 +1399,7 @@ const handleDeletePayment = async (paymentId) => {
                         variant="outlined"
                         size="small"
                         onClick={() => alert('Edit functionality would go here')}
-                        sx={{ borderRadius: 2 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         Edit
                       </Button>
@@ -1249,15 +1413,26 @@ const handleDeletePayment = async (paymentId) => {
       )}
 
       {activeTab === 5 && (
-        <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" className="fw-bold">
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 1
+          }}>
+            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
               Promotions
             </Typography>
             <Button
               variant="contained"
               onClick={handleOpenNewPromotionDialog}
-              sx={{ borderRadius: 2, fontWeight: 'bold' }}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add New Promotion
             </Button>
@@ -1269,35 +1444,42 @@ const handleDeletePayment = async (paymentId) => {
               </div>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {promotions.map((promo) => (
                 <Grid item xs={12} key={promo.id}>
                   <Paper
                     sx={{
-                      p: 3,
+                      p: 2,
                       borderRadius: 2,
                       display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'flex-start',
+                      gap: 2
                     }}
                   >
-                    <Box>
-                      <Typography variant="h6" className="fw-bold">
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
                         {promo.code}
                       </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1 }}>
+                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
                         {promo.description}<br />
                         Discount: {promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue}`}<br />
                         Valid: {new Date(promo.startDate).toLocaleDateString()} - {new Date(promo.endDate).toLocaleDateString()}<br/>
                         Usage: {promo.timesUsed} / {promo.usageLimit}
                       </Typography>
                     </Box>
-                    <Box>
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'row', sm: 'column' },
+                      gap: 1,
+                      flexShrink: 0
+                    }}>
                       <Button
                         variant="contained"
                         size="small"
                         onClick={() => handleOpenEditPromotionDialog(promo)}
-                        sx={{ borderRadius: 2, mr: 1 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         Edit
                       </Button>
@@ -1305,7 +1487,7 @@ const handleDeletePayment = async (paymentId) => {
                         variant="outlined"
                         size="small"
                         onClick={() => handleDeletePromotion(promo.id)}
-                        sx={{ borderRadius: 2 }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                         color="error"
                       >
                         Delete
