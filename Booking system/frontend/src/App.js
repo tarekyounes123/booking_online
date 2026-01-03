@@ -26,6 +26,8 @@ import ServiceDetailsPage from './pages/ServiceDetailsPage'; // Import ServiceDe
 import CheckoutPage from './pages/CheckoutPage';
 import UserProfile from './pages/UserProfile';
 import AppointmentDetails from './pages/AppointmentDetails';
+import GalleryPage from './pages/GalleryPage';
+import AdminGalleryPage from './pages/AdminGalleryPage';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import StaffRoute from './components/StaffRoute';
@@ -76,6 +78,7 @@ function App() {
                   <Route path="/verify-email" element={<EmailVerificationPage />} />
                   <Route path="/services" element={<ServicesPage />} />
                   <Route path="/services/:id" element={<ServiceDetailsPage />} />
+                  <Route path="/gallery" element={<GalleryPage />} />
 
                   {/* Protected routes */}
                   <Route
@@ -141,6 +144,14 @@ function App() {
                     element={
                       <AdminRoute>
                         <Analytics />
+                      </AdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/gallery"
+                    element={
+                      <AdminRoute>
+                        <AdminGalleryPage />
                       </AdminRoute>
                     }
                   />

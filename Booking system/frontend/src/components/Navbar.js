@@ -38,6 +38,9 @@ const Navbar = () => {
             <li className="nav-item">
               <Link className="nav-link" to="/services">Services</Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link" to="/gallery">Gallery</Link>
+            </li>
             {user && (
               <li className="nav-item">
                 <Link className="nav-link" to="/dashboard">Dashboard</Link>
@@ -50,6 +53,9 @@ const Navbar = () => {
                 </li>
                 <li className="nav-item">
                   <Link className="nav-link" to="/analytics">Analytics</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/admin/gallery">Gallery</Link>
                 </li>
               </>
             )}

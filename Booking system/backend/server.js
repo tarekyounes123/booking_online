@@ -42,6 +42,9 @@ app.use('/api/', apiLimiter);
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
@@ -53,6 +56,7 @@ app.use('/api/staff', require('./routes/staff'));
 app.use('/api/reviews', require('./routes/reviews')); // Add reviews routes
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/gallery', require('./routes/gallery'));
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

@@ -142,6 +142,46 @@ export const promotionAPI = {
   validatePromotion: (code) => API.post('/promotions/validate', { code })
 };
 
+// Gallery API calls
+export const galleryAPI = {
+  getGalleryItems: () => API.get('/gallery'),
+  createGalleryItem: (galleryData) => {
+    const formData = new FormData();
+    formData.append('title', galleryData.title);
+    formData.append('description', galleryData.description);
+    formData.append('category', galleryData.category);
+    if (galleryData.images && galleryData.images.length > 0) {
+      // Append multiple images
+      for (let i = 0; i < galleryData.images.length; i++) {
+        formData.append('images', galleryData.images[i]);
+      }
+    }
+    return API.post('/gallery', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  updateGalleryItem: (id, galleryData) => {
+    const formData = new FormData();
+    formData.append('title', galleryData.title);
+    formData.append('description', galleryData.description);
+    formData.append('category', galleryData.category);
+    if (galleryData.images && galleryData.images.length > 0) {
+      // Append multiple images
+      for (let i = 0; i < galleryData.images.length; i++) {
+        formData.append('images', galleryData.images[i]);
+      }
+    }
+    return API.put(`/gallery/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  deleteGalleryItem: (id) => API.delete(`/gallery/${id}`)
+};
+
 // Notification API calls
 export const notificationAPI = {
   getNotifications: () => API.get('/notifications'),
