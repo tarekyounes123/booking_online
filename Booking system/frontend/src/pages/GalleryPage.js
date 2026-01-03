@@ -508,10 +508,9 @@ const GalleryPage = () => {
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent 70%)',
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 60%)',
                   color: 'white',
                   p: 3,
-                  backdropFilter: 'blur(15px)',
                   zIndex: 1
                 }}
               >
@@ -528,8 +527,7 @@ const GalleryPage = () => {
                     backgroundColor: 'rgba(255, 215, 0, 0.3)',
                     color: 'gold',
                     border: '1px solid gold',
-                    fontWeight: 'bold',
-                    backdropFilter: 'blur(5px)'
+                    fontWeight: 'bold'
                   }}
                 />
               </Box>
@@ -615,7 +613,7 @@ const GalleryPage = () => {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'linear-gradient(45deg, rgba(0,0,0,0.9), rgba(0,0,0,0.6))',
+                    background: 'linear-gradient(45deg, rgba(0,0,0,0.85), rgba(0,0,0,0.5))',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'flex-end',
@@ -639,8 +637,7 @@ const GalleryPage = () => {
                       backgroundColor: 'rgba(255, 215, 0, 0.3)',
                       color: 'gold',
                       border: '1px solid gold',
-                      fontWeight: 'bold',
-                      backdropFilter: 'blur(5px)'
+                      fontWeight: 'bold'
                     }}
                   />
                 </Box>
@@ -684,8 +681,7 @@ const GalleryPage = () => {
             margin: 0,
             maxWidth: '100%',
             maxHeight: '100%',
-            borderRadius: 0,
-            backdropFilter: 'blur(10px)'
+            borderRadius: 0
           }
         }}
         onKeyDown={(e) => {
@@ -702,7 +698,7 @@ const GalleryPage = () => {
           top: 16,
           right: 16,
           zIndex: 1000,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
           borderRadius: 2,
           p: 1
         }}>
@@ -774,7 +770,7 @@ const GalleryPage = () => {
           top: 16,
           left: 16,
           zIndex: 1000,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
           borderRadius: 2,
           p: 1
         }}>
@@ -915,7 +911,7 @@ const GalleryPage = () => {
                   gap: 1,
                   px: 2,
                   py: 1,
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
                   borderRadius: 2,
                   zIndex: 1000
                 }}>
