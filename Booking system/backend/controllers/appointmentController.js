@@ -149,6 +149,14 @@ exports.createAppointment = asyncHandler(async (req, res, next) => {
   // Sanitize and validate inputs
   const { serviceId, date, startTime, endTime, notes, location, staffId, paymentMethod } = req.body;
 
+  // Get the service to get its price
+  const service = await Service.findByPk(parseInt(serviceId));
+  if (!service) {
+    return next(
+      new ErrorResponse(`Service not found with id of ${serviceId}`, 404)
+    );
+  }
+
   // Add user ID to body
   const appointmentData = {
     userId: req.user.id,
@@ -159,7 +167,9 @@ exports.createAppointment = asyncHandler(async (req, res, next) => {
     notes: notes ? String(notes).trim() : null,
     location: location ? String(location).trim() : null,
     staffId: staffId && !isNaN(staffId) ? parseInt(staffId) : null,
-    paymentMethod: paymentMethod || 'cash' // Default to cash if not specified
+    paymentMethod: paymentMethod || 'cash', // Default to cash if not specified
+    originalPrice: parseFloat(service.price), // Set the original price from the service
+    discountedPrice: parseFloat(service.price) // Initially same as original price
   };
 
   // Check for existing appointment at the same time

@@ -1,13 +1,12 @@
-const stripe = require('stripe')(process.env.STRIPE_API_KEY);
 const { Payment, Appointment, User, Promotion, Service } = require('../models');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 
-// @desc      Create payment intent
-// @route     POST /api/payments/create-intent
+// @desc      Apply promotion code to appointment
+// @route     POST /api/payments/apply-promotion
 // @access    Private
-exports.createPaymentIntent = asyncHandler(async (req, res, next) => {
-  const { appointmentId, promoCode, currency = 'usd' } = req.body;
+exports.applyPromotion = asyncHandler(async (req, res, next) => {
+  const { appointmentId, promoCode } = req.body;
   const { Promotion, Service, sequelize } = require('../models');
 
   // 1. Get appointment and the service to determine the price
@@ -25,9 +24,104 @@ exports.createPaymentIntent = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`Service not found for this appointment`, 404));
   }
 
-  // Check if the appointment is set for cash payment method
-  if (appointment.paymentMethod === 'cash') {
-    return next(new ErrorResponse(`This appointment is set for cash payment. No online payment is required.`, 400));
+  const originalAmount = parseFloat(appointment.Service.price);
+  let discountAmount = 0;
+  let promotionId = null;
+  let promotion = null;
+
+  // 2. If a promo code is provided, validate it and apply the discount
+  if (promoCode) {
+    promotion = await Promotion.findOne({ where: { code: promoCode } });
+
+    if (!promotion) {
+      return next(new ErrorResponse('Invalid promotion code', 400));
+    }
+    if (!promotion.isActive) {
+      return next(new ErrorResponse('This promotion is no longer active', 400));
+    }
+    const now = new Date();
+    if (now < promotion.startDate || now > promotion.endDate) {
+      return next(new ErrorResponse('This promotion is not valid at this time', 400));
+    }
+    if (promotion.timesUsed >= promotion.usageLimit) {
+      return next(new ErrorResponse('This promotion has reached its usage limit', 400));
+    }
+
+    // Calculate discount
+    if (promotion.discountType === 'percentage') {
+      discountAmount = (originalAmount * promotion.discountValue) / 100;
+    } else { // 'fixed'
+      discountAmount = promotion.discountValue;
+    }
+
+    // Ensure discount doesn't exceed original amount
+    if (discountAmount > originalAmount) {
+      discountAmount = originalAmount; // Max discount is the full price
+    }
+
+    promotionId = promotion.id;
+  }
+
+  const finalAmount = originalAmount - discountAmount;
+
+  // Use a transaction to ensure atomicity
+  const t = await sequelize.transaction();
+
+  try {
+    // 3. If a promotion was used, increment its usage count
+    if (promotion) {
+      await promotion.increment('timesUsed', { by: 1, transaction: t });
+    }
+
+    // 4. Update the appointment with discount information
+    await appointment.update({
+      originalPrice: originalAmount,
+      discountedPrice: finalAmount,
+      discountAmount: discountAmount,
+      promotionId: promotionId
+    }, { transaction: t });
+
+    // If everything is successful, commit the transaction
+    await t.commit();
+
+    // Return the calculated discount information
+    res.status(200).json({
+      success: true,
+      originalAmount: originalAmount,
+      discountAmount: discountAmount,
+      finalAmount: finalAmount,
+      promotionId: promotionId,
+      promotionCode: promoCode
+    });
+
+  } catch (error) {
+    // If anything fails, roll back the transaction
+    await t.rollback();
+    console.error('Error applying promotion:', error);
+    return next(new ErrorResponse(error.message, 500));
+  }
+});
+
+// @desc      Create payment for Lebanon methods (bank transfer, cash)
+// @route     POST /api/payments/create
+// @access    Private
+exports.createPayment = asyncHandler(async (req, res, next) => {
+  const { appointmentId, promoCode, paymentMethod = 'cash', currency = 'usd' } = req.body;
+  const { Promotion, Service, sequelize } = require('../models');
+
+  // 1. Get appointment and the service to determine the price
+  const appointment = await Appointment.findByPk(appointmentId, {
+    include: [{ model: Service, attributes: ['price'] }]
+  });
+
+  if (!appointment) {
+    return next(new ErrorResponse(`Appointment not found with id of ${appointmentId}`, 404));
+  }
+  if (req.user.role !== 'admin' && appointment.userId !== req.user.id) {
+    return next(new ErrorResponse(`User not authorized for this appointment`, 401));
+  }
+  if (!appointment.Service) {
+    return next(new ErrorResponse(`Service not found for this appointment`, 404));
   }
 
   const originalAmount = parseFloat(appointment.Service.price);
@@ -65,26 +159,15 @@ exports.createPaymentIntent = asyncHandler(async (req, res, next) => {
     if (finalAmount < 0) {
       finalAmount = 0; // Ensure price doesn't go below zero
     }
-    
+
     promotionId = promotion.id;
   }
-  
+
   // Use a transaction to ensure atomicity
   const t = await sequelize.transaction();
 
   try {
-    // 3. Create Stripe payment intent with the final amount
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(finalAmount * 100), // Convert to cents
-      currency: currency,
-      metadata: {
-        appointmentId: appointmentId,
-        userId: req.user.id,
-        promotionId: promotionId,
-      }
-    });
-
-    // 4. Create payment record in our database
+    // Create payment record in our database for Lebanon methods
     const payment = await Payment.create({
       appointmentId: appointmentId,
       userId: req.user.id,
@@ -93,12 +176,12 @@ exports.createPaymentIntent = asyncHandler(async (req, res, next) => {
       amount: finalAmount, // Final amount
       promotionId: promotionId,
       currency: currency,
-      paymentMethod: 'stripe',
-      paymentIntentId: paymentIntent.id,
-      status: 'pending'
+      paymentMethod: paymentMethod, // Use the requested payment method
+      paymentIntentId: null, // No payment intent for Lebanon methods
+      status: paymentMethod === 'cash' ? 'completed' : 'pending' // Cash payments are completed immediately
     }, { transaction: t });
 
-    // 5. If a promotion was used, increment its usage count
+    // 3. If a promotion was used, increment its usage count
     if (promotion) {
       await promotion.increment('timesUsed', { by: 1, transaction: t });
     }
@@ -108,7 +191,6 @@ exports.createPaymentIntent = asyncHandler(async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      client_secret: paymentIntent.client_secret,
       payment: payment
     });
 
@@ -119,72 +201,6 @@ exports.createPaymentIntent = asyncHandler(async (req, res, next) => {
   }
 });
 
-// @desc      Handle Stripe webhook
-// @route     POST /api/payments/webhook
-// @access    Public (handled by Stripe)
-exports.stripeWebhook = asyncHandler(async (req, res, next) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Handle the event
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object;
-      
-      // Update payment status in database
-      await Payment.update(
-        { 
-          status: 'completed', 
-          paidAt: new Date(),
-          transactionId: paymentIntent.id
-        },
-        { 
-          where: { paymentIntentId: paymentIntent.id } 
-        }
-      );
-      
-      // Update appointment status to confirmed
-      const payment = await Payment.findOne({
-        where: { paymentIntentId: paymentIntent.id }
-      });
-      
-      if (payment) {
-        await Appointment.update(
-          { status: 'confirmed' },
-          { where: { id: payment.appointmentId } }
-        );
-      }
-      
-      break;
-      
-    case 'payment_intent.payment_failed':
-      const failedIntent = event.data.object;
-      
-      // Update payment status in database
-      await Payment.update(
-        { status: 'failed' },
-        { where: { paymentIntentId: failedIntent.id } }
-      );
-      
-      break;
-      
-    default:
-      console.log(`Unhandled event type ${event.type}`);
-  }
-
-  // Return a 200 response to acknowledge receipt of the event
-  res.json({ received: true });
-});
 
 // @desc      Get payment by ID
 // @route     GET /api/payments/:id

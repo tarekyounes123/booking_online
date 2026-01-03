@@ -53,12 +53,12 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     paymentMethod: {
-      type: DataTypes.ENUM('stripe', 'paypal', 'cash', 'bank_transfer'),
+      type: DataTypes.ENUM('cash', 'online', 'card', 'stripe'),
       allowNull: false
     },
     transactionId: {
       type: DataTypes.STRING,
-      allowNull: true // Stripe/PayPal transaction ID
+      allowNull: true // Transaction ID if applicable
     },
     status: {
       type: DataTypes.ENUM('pending', 'completed', 'failed', 'refunded', 'cancelled'),
@@ -66,7 +66,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     paymentIntentId: {
-      type: DataTypes.STRING, // Stripe payment intent ID
+      type: DataTypes.STRING, // For compatibility if needed
       allowNull: true
     },
     receiptUrl: {

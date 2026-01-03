@@ -70,6 +70,26 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 'cash',
       allowNull: false
     },
+    originalPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true // Initially null, will be set when appointment is created
+    },
+    discountedPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true // Will be set when promotion is applied
+    },
+    discountAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true // Will be set when promotion is applied
+    },
+    promotionId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Promotions',
+        key: 'id'
+      }
+    },
     branchId: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -90,6 +110,7 @@ module.exports = (sequelize, DataTypes) => {
     Appointment.belongsTo(models.Staff, { foreignKey: 'staffId' });
     Appointment.hasOne(models.Payment, { foreignKey: 'appointmentId' });
     Appointment.belongsTo(models.Branch, { foreignKey: 'branchId' });
+    Appointment.belongsTo(models.Promotion, { foreignKey: 'promotionId' });
   };
 
   return Appointment;

@@ -290,7 +290,8 @@ const NewAppointmentPage = () => {
                 onChange={(e) => setPaymentMethod(e.target.value)}
               >
                 <FormControlLabel value="cash" control={<Radio />} label="Pay at Service Location" />
-                <FormControlLabel value="online" control={<Radio />} label="Pay Online (Coming Soon)" disabled />
+                <FormControlLabel value="bank_transfer" control={<Radio />} label="Bank Transfer" />
+                <FormControlLabel value="online" control={<Radio />} label="Pay Online" />
               </RadioGroup>
             </FormControl>
           </Grid>

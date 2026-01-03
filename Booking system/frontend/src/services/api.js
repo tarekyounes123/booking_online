@@ -125,9 +125,9 @@ export const staffAPI = {
   getStaffByBranch: (branchId) => API.get(`/staff/branch/${branchId}`)
 };
 
-// Payment API calls
+// Payment API calls (now promotion-focused)
 export const paymentAPI = {
-  createPaymentIntent: (paymentData) => API.post('/payments/create-intent', paymentData),
+  applyPromotion: (promotionData) => API.post('/payments/apply-promotion', promotionData),
   getPayments: () => API.get('/payments'),
   getPayment: (id) => API.get(`/payments/${id}`),
   getPaymentReceipt: (id) => API.get(`/payments/${id}/receipt`)

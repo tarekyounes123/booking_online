@@ -1,7 +1,6 @@
 const express = require('express');
 const {
-  createPaymentIntent,
-  stripeWebhook,
+  applyPromotion,
   getPayment,
   getPayments,
   updatePayment,
@@ -13,12 +12,9 @@ const { validate, validatePayment } = require('../middleware/validation');
 const router = express.Router();
 
 router
-  .route('/create-intent')
-  .post(protect, validate(validatePayment), createPaymentIntent);
+  .route('/apply-promotion')
+  .post(protect, validate(validatePayment), applyPromotion);
 
-router
-  .route('/webhook')
-  .post(stripeWebhook); // No protect middleware for webhook
 
 router
   .route('/')

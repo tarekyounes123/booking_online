@@ -100,19 +100,17 @@ const validateService = [
     .withMessage('Price must be a positive number')
 ];
 
-// Payment validation
+// Payment validation (now for promotion application)
 const validatePayment = [
   body('appointmentId')
     .isInt({ min: 1 })
     .withMessage('Appointment ID must be a positive integer'),
-  body('amount')
-    .isFloat({ min: 0.01 })
-    .withMessage('Amount must be a positive number'),
-  body('currency')
+  body('promoCode')
     .optional()
-    .isAlpha()
-    .isLength({ min: 3, max: 3 })
-    .withMessage('Currency must be a 3-letter code')
+    .isString()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Promo code must be at most 50 characters')
 ];
 
 module.exports = {
