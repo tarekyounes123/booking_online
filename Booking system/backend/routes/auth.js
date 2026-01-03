@@ -1,0 +1,37 @@
+const express = require('express');
+const rateLimit = require('express-rate-limit');
+const {
+  register,
+  login,
+  logout,
+  getMe,
+  forgotPassword,
+  resetPassword,
+  updateDetails,
+  updatePassword,
+  verifyUser,
+  resendVerification
+} = require('../controllers/authController');
+const { protect } = require('../middleware/auth');
+const { validate, validateRegister, validateLogin } = require('../middleware/validation');
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: 'Too many registration attempts from this IP, please try again later.'
+});
+
+const router = express.Router();
+
+router.post('/register', registerLimiter, validate(validateRegister), register);
+router.post('/verify', verifyUser);
+router.post('/resend-verification', resendVerification);
+router.post('/login', validate(validateLogin), login);
+router.post('/logout', logout);
+router.post('/forgotpassword', validate([validateLogin[0]]), forgotPassword); // Only validate email
+router.put('/resetpassword/:resettoken', validate([validateLogin[1]]), resetPassword); // Only validate password
+router.put('/updatedetails', protect, updateDetails);
+router.put('/updatepassword', protect, updatePassword);
+router.get('/me', protect, getMe);
+
+module.exports = router;
