@@ -37,6 +37,13 @@ Object.keys(db).forEach(modelName => {
   }
 });
 
+// Define associations after all models are loaded
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associateAfterLoad) {
+    db[modelName].associateAfterLoad(db);
+  }
+});
+
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 

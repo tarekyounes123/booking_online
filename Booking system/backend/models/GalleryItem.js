@@ -44,22 +44,29 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true // Store the original filename
     },
-    category: {
-      type: DataTypes.STRING,
-      defaultValue: 'other',
-      allowNull: false,
-      validate: {
-        isIn: {
-          args: [['nails', 'hair', 'beauty', 'skincare', 'other']],
-          msg: 'Category must be one of: nails, hair, beauty, skincare, other'
-        }
-      }
+    categoryId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'categories',
+        key: 'id'
+      },
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
     }
   }, {
     // Model options
     tableName: 'gallery_items',
     timestamps: true
   });
+
+  GalleryItem.associate = (models) => {
+    GalleryItem.belongsTo(models.Category, { foreignKey: 'categoryId' });
+  };
+
+  GalleryItem.associateAfterLoad = (db) => {
+    GalleryItem.belongsTo(db.Category, { foreignKey: 'categoryId' });
+  };
 
   return GalleryItem;
 };

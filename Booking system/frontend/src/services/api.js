@@ -149,7 +149,9 @@ export const galleryAPI = {
     const formData = new FormData();
     formData.append('title', galleryData.title);
     formData.append('description', galleryData.description);
-    formData.append('category', galleryData.category);
+    if (galleryData.categoryId) {
+      formData.append('categoryId', galleryData.categoryId);
+    }
     if (galleryData.images && galleryData.images.length > 0) {
       // Append multiple images
       for (let i = 0; i < galleryData.images.length; i++) {
@@ -166,7 +168,9 @@ export const galleryAPI = {
     const formData = new FormData();
     formData.append('title', galleryData.title);
     formData.append('description', galleryData.description);
-    formData.append('category', galleryData.category);
+    if (galleryData.categoryId) {
+      formData.append('categoryId', galleryData.categoryId);
+    }
     if (galleryData.images && galleryData.images.length > 0) {
       // Append multiple images
       for (let i = 0; i < galleryData.images.length; i++) {
@@ -180,6 +184,14 @@ export const galleryAPI = {
     });
   },
   deleteGalleryItem: (id) => API.delete(`/gallery/${id}`)
+};
+
+// Categories API calls
+export const categoryAPI = {
+  getCategories: () => API.get('/categories'),
+  createCategory: (categoryData) => API.post('/categories', categoryData),
+  updateCategory: (id, categoryData) => API.put(`/categories/${id}`, categoryData),
+  deleteCategory: (id) => API.delete(`/categories/${id}`)
 };
 
 // Notification API calls

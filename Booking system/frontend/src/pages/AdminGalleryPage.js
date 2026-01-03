@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Grid, Box, Typography, Paper, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Alert, useTheme } from '@mui/material';
-import { galleryAPI } from '../services/api';
+import { galleryAPI, categoryAPI } from '../services/api';
 
 const AdminGalleryPage = () => {
   const [galleryItems, setGalleryItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -12,14 +14,31 @@ const AdminGalleryPage = () => {
     title: '',
     description: '',
     images: [],
-    category: 'nails'
+    categoryId: null
   });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
   const theme = useTheme();
 
   useEffect(() => {
-    fetchGalleryItems();
+    const fetchData = async () => {
+      try {
+        const [galleryResponse, categoryResponse] = await Promise.all([
+          galleryAPI.getGalleryItems(),
+          categoryAPI.getCategories()
+        ]);
+        setGalleryItems(galleryResponse.data.data);
+        setCategories(categoryResponse.data.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setMessage('Error loading data');
+      } finally {
+        setLoading(false);
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const fetchGalleryItems = async () => {
@@ -98,7 +117,7 @@ const AdminGalleryPage = () => {
       title: item.title,
       description: item.description,
       images: [], // Don't set images for editing, user can upload new ones
-      category: item.category || 'nails'
+      categoryId: item.categoryId || null
     });
     setOpenEditDialog(true);
   };
@@ -107,7 +126,7 @@ const AdminGalleryPage = () => {
     setOpenAddDialog(false);
     setOpenEditDialog(false);
     setSelectedItem(null);
-    setFormData({ title: '', description: '', images: [], category: 'nails' });
+    setFormData({ title: '', description: '', images: [], categoryId: null });
     setErrors({});
   };
 
@@ -332,15 +351,15 @@ const AdminGalleryPage = () => {
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
-                value={formData.category}
+                value={formData.categoryId || ''}
                 label="Category"
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
               >
-                <MenuItem value="nails">Nails</MenuItem>
-                <MenuItem value="hair">Hair</MenuItem>
-                <MenuItem value="beauty">Beauty</MenuItem>
-                <MenuItem value="skincare">Skincare</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
+                {categories.map(category => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Box>
@@ -440,15 +459,15 @@ const AdminGalleryPage = () => {
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
-                value={formData.category}
+                value={formData.categoryId || ''}
                 label="Category"
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
               >
-                <MenuItem value="nails">Nails</MenuItem>
-                <MenuItem value="hair">Hair</MenuItem>
-                <MenuItem value="beauty">Beauty</MenuItem>
-                <MenuItem value="skincare">Skincare</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
+                {categories.map(category => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Box>

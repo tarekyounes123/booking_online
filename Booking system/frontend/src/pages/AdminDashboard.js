@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Typography, Grid, Paper, Button, Card, CardContent, CardActions, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Box, Chip } from '@mui/material';
-import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI, promotionAPI } from '../services/api';
+import { Container, Typography, Grid, Paper, Button, Card, CardContent, CardActions, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Box, Chip, FormControlLabel, Switch } from '@mui/material';
+import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI, promotionAPI, categoryAPI } from '../services/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -44,6 +44,21 @@ const [newPromotionData, setNewPromotionData] = useState({
 });
 const [openEditPromotionDialog, setOpenEditPromotionDialog] = useState(false);
 const [selectedPromotion, setSelectedPromotion] = useState(null);
+
+// Category Management State
+const [openNewCategoryDialog, setOpenNewCategoryDialog] = useState(false);
+const [openEditCategoryDialog, setOpenEditCategoryDialog] = useState(false);
+const [newCategoryData, setNewCategoryData] = useState({
+  name: '',
+  description: '',
+  isActive: true
+});
+const [editCategoryData, setEditCategoryData] = useState({
+  name: '',
+  description: '',
+  isActive: true
+});
+const [selectedCategory, setSelectedCategory] = useState(null);
 
 const handleOpenNewPromotionDialog = () => {
   setNewPromotionData({
@@ -107,6 +122,44 @@ const handleDeletePromotion = async (id) => {
     } catch (error) {
       console.error('Error deleting promotion:', error);
       alert('Failed to delete promotion.');
+    }
+  }
+};
+
+// Category Management Handlers
+const handleCreateCategory = async () => {
+  try {
+    const res = await categoryAPI.createCategory(newCategoryData);
+    setCategories([res.data.data, ...categories]);
+    setOpenNewCategoryDialog(false);
+    setNewCategoryData({ name: '', description: '', isActive: true });
+  } catch (error) {
+    console.error('Error creating category:', error);
+    alert('Failed to create category: ' + (error.response?.data?.error || error.message));
+  }
+};
+
+const handleUpdateCategory = async () => {
+  if (!selectedCategory) return;
+  try {
+    const res = await categoryAPI.updateCategory(selectedCategory.id, editCategoryData);
+    setCategories(categories.map(c => c.id === selectedCategory.id ? res.data.data : c));
+    setOpenEditCategoryDialog(false);
+    setSelectedCategory(null);
+  } catch (error) {
+    console.error('Error updating category:', error);
+    alert('Failed to update category: ' + (error.response?.data?.error || error.message));
+  }
+};
+
+const handleDeleteCategory = async (id) => {
+  if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+    try {
+      await categoryAPI.deleteCategory(id);
+      setCategories(categories.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      alert('Failed to delete category: ' + (error.response?.data?.error || error.message));
     }
   }
 };
@@ -377,18 +430,20 @@ const handleDeletePayment = async (paymentId) => {
   const [staff, setStaff] = useState([]);
   const [payments, setPayments] = useState([]);
   const [promotions, setPromotions] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [appointmentsRes, usersRes, servicesRes, staffRes, paymentsRes, promotionsRes] = await Promise.all([
+        const [appointmentsRes, usersRes, servicesRes, staffRes, paymentsRes, promotionsRes, categoriesRes] = await Promise.all([
           appointmentAPI.getAppointments(),
           userAPI.getUsers(),
           serviceAPI.getServices(),
           staffAPI.getStaff(),
           paymentAPI.getPayments(),
-          promotionAPI.getPromotions()
+          promotionAPI.getPromotions(),
+          categoryAPI.getCategories()
         ]);
 
         setAppointments(appointmentsRes.data.data);
@@ -397,6 +452,7 @@ const handleDeletePayment = async (paymentId) => {
         setStaff(staffRes.data.data);
         setPayments(paymentsRes.data.data);
         setPromotions(promotionsRes.data.data);
+        setCategories(categoriesRes.data.data);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -532,6 +588,7 @@ const handleDeletePayment = async (paymentId) => {
           <Tab label="Staff" />
           <Tab label="Payments" />
           <Tab label="Promotions" />
+          <Tab label="Categories" />
         </Tabs>
       </Paper>
 
@@ -1500,6 +1557,198 @@ const handleDeletePayment = async (paymentId) => {
           )}
         </Paper>
       )}
+
+      {activeTab === 6 && (
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 1
+          }}>
+            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
+              Categories
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={() => setOpenNewCategoryDialog(true)}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Add New Category
+            </Button>
+          </Box>
+          {loading ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {categories.map((category) => (
+                <Grid item xs={12} sm={6} md={4} key={category.id}>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      minHeight: 120
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                        {category.name}
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+                        {category.description || 'No description provided'}<br />
+                        Status: <Chip
+                          label={category.isActive ? 'Active' : 'Inactive'}
+                          color={category.isActive ? 'success' : 'error'}
+                          size="small"
+                          sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
+                        />
+                      </Typography>
+                    </Box>
+                    <Box sx={{
+                      mt: 2,
+                      display: 'flex',
+                      flexDirection: { xs: 'row', sm: 'column' },
+                      gap: 1,
+                      flexShrink: 0
+                    }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => {
+                          setSelectedCategory(category);
+                          setEditCategoryData({
+                            name: category.name,
+                            description: category.description || '',
+                            isActive: category.isActive
+                          });
+                          setOpenEditCategoryDialog(true);
+                        }}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleDeleteCategory(category.id)}
+                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                        color="error"
+                      >
+                        Delete
+                      </Button>
+                    </Box>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Paper>
+      )}
+
+      {/* Add Category Dialog */}
+      <Dialog open={openNewCategoryDialog} onClose={() => setOpenNewCategoryDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Category</DialogTitle>
+        <DialogContent dividers>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Name"
+              value={newCategoryData.name}
+              onChange={(e) => setNewCategoryData({ ...newCategoryData, name: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Description"
+              value={newCategoryData.description}
+              onChange={(e) => setNewCategoryData({ ...newCategoryData, description: e.target.value })}
+              multiline
+              rows={3}
+              fullWidth
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={newCategoryData.isActive}
+                  onChange={(e) => setNewCategoryData({ ...newCategoryData, isActive: e.target.checked })}
+                  color="primary"
+                />
+              }
+              label="Active"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenNewCategoryDialog(false)}>Cancel</Button>
+          <Button
+            onClick={handleCreateCategory}
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(45deg, #667eea, #764ba2)',
+              '&:hover': { background: 'linear-gradient(45deg, #5a6fd8, #6a4190)' }
+            }}
+          >
+            Create Category
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Category Dialog */}
+      <Dialog open={openEditCategoryDialog} onClose={() => setOpenEditCategoryDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Category</DialogTitle>
+        <DialogContent dividers>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Name"
+              value={editCategoryData.name}
+              onChange={(e) => setEditCategoryData({ ...editCategoryData, name: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Description"
+              value={editCategoryData.description}
+              onChange={(e) => setEditCategoryData({ ...editCategoryData, description: e.target.value })}
+              multiline
+              rows={3}
+              fullWidth
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editCategoryData.isActive}
+                  onChange={(e) => setEditCategoryData({ ...editCategoryData, isActive: e.target.checked })}
+                  color="primary"
+                />
+              }
+              label="Active"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEditCategoryDialog(false)}>Cancel</Button>
+          <Button
+            onClick={handleUpdateCategory}
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(45deg, #667eea, #764ba2)',
+              '&:hover': { background: 'linear-gradient(45deg, #5a6fd8, #6a4190)' }
+            }}
+          >
+            Update Category
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Promotion Dialogs */}
       <Dialog open={openNewPromotionDialog} onClose={handleCloseNewPromotionDialog} maxWidth="sm" fullWidth>

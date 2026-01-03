@@ -9,12 +9,14 @@ import ShareIcon from '@mui/icons-material/Share';
 import DownloadIcon from '@mui/icons-material/Download';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
-import { galleryAPI } from '../services/api';
+import { galleryAPI, categoryAPI } from '../services/api';
 
 const GalleryPage = () => {
   const [galleryItems, setGalleryItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -29,19 +31,26 @@ const GalleryPage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   useEffect(() => {
-    const fetchGalleryItems = async () => {
+    const fetchData = async () => {
       try {
-        const response = await galleryAPI.getGalleryItems();
-        setGalleryItems(response.data.data);
-        setFilteredItems(response.data.data);
+        // Fetch both gallery items and categories
+        const [galleryResponse, categoryResponse] = await Promise.all([
+          galleryAPI.getGalleryItems(),
+          categoryAPI.getCategories()
+        ]);
+
+        setGalleryItems(galleryResponse.data.data);
+        setFilteredItems(galleryResponse.data.data);
+        setCategories(categoryResponse.data.data);
       } catch (error) {
-        console.error('Error fetching gallery items:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
+        setLoadingCategories(false);
       }
     };
 
-    fetchGalleryItems();
+    fetchData();
   }, []);
 
   // Filter and sort items based on selected options
@@ -50,7 +59,7 @@ const GalleryPage = () => {
 
     // Filter by category
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(item => item.category === selectedCategory);
+      filtered = filtered.filter(item => item.categoryId?.toString() === selectedCategory.toString());
     }
 
     // Sort items
@@ -70,7 +79,11 @@ const GalleryPage = () => {
     setFilteredItems(filtered);
   }, [galleryItems, selectedCategory, sortBy]);
 
-  const categories = ['all', 'nails', 'hair', 'beauty', 'skincare', 'other'];
+  // Dynamic categories array
+  const allCategories = [
+    { id: 'all', name: 'All Categories' },
+    ...categories.map(cat => ({ id: cat.id, name: cat.name }))
+  ];
 
   const handleImageClick = (image, index) => {
     setSelectedImage(image);
@@ -250,17 +263,17 @@ const GalleryPage = () => {
                 }
               }}
             >
-              {categories.map(category => (
+              {allCategories.map(category => (
                 <MenuItem
-                  key={category}
-                  value={category}
+                  key={category.id}
+                  value={category.id}
                   sx={{
                     '&:hover': {
                       backgroundColor: 'rgba(255,215,0,0.1)'
                     }
                   }}
                 >
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                  {category.name}
                 </MenuItem>
               ))}
             </Select>
@@ -344,27 +357,27 @@ const GalleryPage = () => {
           position: 'relative',
           zIndex: 1
         }}>
-          {categories.map(category => (
+          {allCategories.map(category => (
             <Chip
-              key={category}
-              label={category.charAt(0).toUpperCase() + category.slice(1)}
-              onClick={() => setSelectedCategory(category)}
-              variant={selectedCategory === category ? 'filled' : 'outlined'}
+              key={category.id}
+              label={category.name}
+              onClick={() => setSelectedCategory(category.id)}
+              variant={selectedCategory === category.id ? 'filled' : 'outlined'}
               sx={{
                 borderRadius: 3,
                 cursor: 'pointer',
-                fontWeight: selectedCategory === category ? 'bold' : 'normal',
+                fontWeight: selectedCategory === category.id ? 'bold' : 'normal',
                 fontSize: '0.875rem',
                 height: 36,
-                background: selectedCategory === category
+                background: selectedCategory === category.id
                   ? 'linear-gradient(45deg, #ffd700, #ffed4e)'
                   : 'transparent',
-                color: selectedCategory === category ? '#000' : 'rgba(0,0,0,0.7)',
-                border: selectedCategory === category
+                color: selectedCategory === category.id ? '#000' : 'rgba(0,0,0,0.7)',
+                border: selectedCategory === category.id
                   ? '1px solid transparent'
                   : '1px solid rgba(0,0,0,0.2)',
                 '&:hover': {
-                  background: selectedCategory === category
+                  background: selectedCategory === category.id
                     ? 'linear-gradient(45deg, #ffed4e, #fff176)'
                     : 'rgba(255,215,0,0.1)',
                   transform: 'translateY(-2px)',
@@ -373,7 +386,7 @@ const GalleryPage = () => {
                 transition: 'all 0.3s ease',
                 position: 'relative',
                 overflow: 'hidden',
-                '&::before': selectedCategory === category ? {
+                '&::before': selectedCategory === category.id ? {
                   content: '""',
                   position: 'absolute',
                   top: 0,

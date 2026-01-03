@@ -57,6 +57,7 @@ app.use('/api/reviews', require('./routes/reviews')); // Add reviews routes
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/gallery', require('./routes/gallery'));
+app.use('/api/categories', require('./routes/categories'));
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

@@ -28,6 +28,7 @@ import UserProfile from './pages/UserProfile';
 import AppointmentDetails from './pages/AppointmentDetails';
 import GalleryPage from './pages/GalleryPage';
 import AdminGalleryPage from './pages/AdminGalleryPage';
+import CategoryManagementPage from './pages/CategoryManagementPage';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import StaffRoute from './components/StaffRoute';
@@ -152,6 +153,14 @@ function App() {
                     element={
                       <AdminRoute>
                         <AdminGalleryPage />
+                      </AdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/categories"
+                    element={
+                      <AdminRoute>
+                        <CategoryManagementPage />
                       </AdminRoute>
                     }
                   />

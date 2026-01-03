@@ -1,4 +1,4 @@
-const { GalleryItem } = require('../models');
+const { GalleryItem, Category } = require('../models');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const multer = require('multer');
@@ -47,14 +47,23 @@ exports.uploadImage = upload.array('images', 10); // Allow up to 10 images
 // @access    Public
 exports.getGalleryItems = asyncHandler(async (req, res, next) => {
   const galleryItems = await GalleryItem.findAll({
+    include: [{
+      model: Category,
+      attributes: ['id', 'name']
+    }],
     order: [['createdAt', 'DESC']]
   });
 
-  // Add full URL to image paths
-  const itemsWithFullUrls = galleryItems.map(item => ({
-    ...item.toJSON(),
-    imageUrl: `/uploads/gallery/${item.imageUrl}` // Use relative path to match the static route
-  }));
+  // Add full URL to image paths and category info
+  const itemsWithFullUrls = galleryItems.map(item => {
+    const itemJSON = item.toJSON();
+    return {
+      ...itemJSON,
+      category: itemJSON.Category ? itemJSON.Category.name : 'Uncategorized',
+      categoryId: itemJSON.Category ? itemJSON.Category.id : null,
+      imageUrl: `/uploads/gallery/${itemJSON.imageUrl}` // Use relative path to match the static route
+    };
+  });
 
   res.status(200).json({
     success: true,
@@ -67,7 +76,12 @@ exports.getGalleryItems = asyncHandler(async (req, res, next) => {
 // @route     GET /api/gallery/:id
 // @access    Public
 exports.getGalleryItem = asyncHandler(async (req, res, next) => {
-  const galleryItem = await GalleryItem.findByPk(req.params.id);
+  const galleryItem = await GalleryItem.findByPk(req.params.id, {
+    include: [{
+      model: Category,
+      attributes: ['id', 'name']
+    }]
+  });
 
   if (!galleryItem) {
     return next(
@@ -75,10 +89,13 @@ exports.getGalleryItem = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Add full URL to image path
+  // Add full URL to image path and category info
+  const itemJSON = galleryItem.toJSON();
   const itemWithFullUrl = {
-    ...galleryItem.toJSON(),
-    imageUrl: `/uploads/gallery/${galleryItem.imageUrl}` // Use relative path to match the static route
+    ...itemJSON,
+    category: itemJSON.Category ? itemJSON.Category.name : 'Uncategorized',
+    categoryId: itemJSON.Category ? itemJSON.Category.id : null,
+    imageUrl: `/uploads/gallery/${itemJSON.imageUrl}` // Use relative path to match the static route
   };
 
   res.status(200).json({
@@ -104,6 +121,17 @@ exports.createGalleryItem = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // If categoryId is provided, validate it exists
+  let categoryInstance = null;
+  if (req.body.categoryId) {
+    categoryInstance = await Category.findByPk(req.body.categoryId);
+    if (!categoryInstance) {
+      return next(
+        new ErrorResponse(`Category not found with id of ${req.body.categoryId}`, 404)
+      );
+    }
+  }
+
   // Create gallery items for each uploaded image
   const createdItems = [];
   for (const file of req.files) {
@@ -112,12 +140,13 @@ exports.createGalleryItem = asyncHandler(async (req, res, next) => {
       description: req.body.description,
       imageUrl: file.filename, // Store the filename
       imageFilename: file.originalname, // Store original filename
-      category: req.body.category
+      categoryId: req.body.categoryId || null
     });
 
     // Add full URL to response
     const itemWithFullUrl = {
       ...galleryItem.toJSON(),
+      category: categoryInstance ? categoryInstance.name : 'Uncategorized', // Include category name in response
       imageUrl: `/uploads/gallery/${galleryItem.imageUrl}` // Use relative path to match the static route
     };
 
@@ -150,6 +179,17 @@ exports.updateGalleryItem = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // If categoryId is provided, validate it exists
+  let categoryInstance = null;
+  if (req.body.categoryId) {
+    categoryInstance = await Category.findByPk(req.body.categoryId);
+    if (!categoryInstance) {
+      return next(
+        new ErrorResponse(`Category not found with id of ${req.body.categoryId}`, 404)
+      );
+    }
+  }
+
   // If a new image is uploaded, delete the old one
   if (req.files && req.files.length > 0) {
     const file = req.files[0]; // Use first image for update
@@ -164,20 +204,21 @@ exports.updateGalleryItem = asyncHandler(async (req, res, next) => {
       description: req.body.description,
       imageUrl: file.filename,
       imageFilename: file.originalname,
-      category: req.body.category
+      categoryId: req.body.categoryId || galleryItem.categoryId
     });
   } else {
     // Update without changing image
     await galleryItem.update({
       title: req.body.title,
       description: req.body.description,
-      category: req.body.category
+      categoryId: req.body.categoryId || galleryItem.categoryId
     });
   }
 
   // Add full URL to response
   const itemWithFullUrl = {
     ...galleryItem.toJSON(),
+    category: categoryInstance ? categoryInstance.name : (galleryItem.Category ? galleryItem.Category.name : 'Uncategorized'), // Include category name in response
     imageUrl: `/uploads/gallery/${galleryItem.imageUrl}` // Use relative path to match the static route
   };
 
