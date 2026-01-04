@@ -1,5 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const avatarUpload = require('../middleware/avatarUpload');
 const {
   register,
   login,
@@ -30,7 +31,7 @@ router.post('/login', validate(validateLogin), login);
 router.post('/logout', logout);
 router.post('/forgotpassword', validate([validateLogin[0]]), forgotPassword); // Only validate email
 router.put('/resetpassword/:resettoken', validate([validateLogin[1]]), resetPassword); // Only validate password
-router.put('/updatedetails', protect, updateDetails);
+router.put('/updatedetails', protect, avatarUpload.single('avatar'), updateDetails);
 router.put('/updatepassword', protect, updatePassword);
 router.get('/me', protect, getMe);
 

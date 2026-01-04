@@ -60,6 +60,11 @@ const [editCategoryData, setEditCategoryData] = useState({
 });
 const [selectedCategory, setSelectedCategory] = useState(null);
 
+// Additional state for advanced features
+const [searchTerm, setSearchTerm] = useState('');
+const [dateRange, setDateRange] = useState({ start: '', end: '' });
+const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
+
 const handleOpenNewPromotionDialog = () => {
   setNewPromotionData({
     code: '',
@@ -71,6 +76,82 @@ const handleOpenNewPromotionDialog = () => {
     usageLimit: ''
   });
   setOpenNewPromotionDialog(true);
+};
+
+const handleOpenNewCategoryDialog = () => {
+  setNewCategoryData({
+    name: '',
+    description: '',
+    isActive: true
+  });
+  setOpenNewCategoryDialog(true);
+};
+
+const handleCloseNewCategoryDialog = () => {
+  setOpenNewCategoryDialog(false);
+  setNewCategoryData({
+    name: '',
+    description: '',
+    isActive: true
+  });
+};
+
+const handleCreateCategoryFromPromotion = async () => {
+  try {
+    const res = await categoryAPI.createCategory(newCategoryData);
+    setCategories([res.data.data, ...categories]);
+    setFilteredCategories([res.data.data, ...filteredCategories]);
+    handleCloseNewCategoryDialog();
+  } catch (error) {
+    console.error('Error creating category:', error);
+    alert('Failed to create category: ' + (error.response?.data?.error || error.message));
+  }
+};
+
+const handleOpenEditCategoryDialog = (category) => {
+  setSelectedCategory(category);
+  setEditCategoryData({
+    name: category.name,
+    description: category.description || '',
+    isActive: category.isActive
+  });
+  setOpenEditCategoryDialog(true);
+};
+
+const handleCloseEditCategoryDialog = () => {
+  setOpenEditCategoryDialog(false);
+  setSelectedCategory(null);
+  setEditCategoryData({
+    name: '',
+    description: '',
+    isActive: true
+  });
+};
+
+const handleUpdateCategoryFromPromotion = async () => {
+  if (!selectedCategory) return;
+  try {
+    const res = await categoryAPI.updateCategory(selectedCategory.id, editCategoryData);
+    setCategories(categories.map(cat => cat.id === selectedCategory.id ? res.data.data : cat));
+    setFilteredCategories(filteredCategories.map(cat => cat.id === selectedCategory.id ? res.data.data : cat));
+    handleCloseEditCategoryDialog();
+  } catch (error) {
+    console.error('Error updating category:', error);
+    alert('Failed to update category: ' + (error.response?.data?.error || error.message));
+  }
+};
+
+const handleDeleteCategoryFromPromotion = async (id) => {
+  if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+    try {
+      await categoryAPI.deleteCategory(id);
+      setCategories(categories.filter(cat => cat.id !== id));
+      setFilteredCategories(filteredCategories.filter(cat => cat.id !== id));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      alert('Failed to delete category: ' + (error.response?.data?.error || error.message));
+    }
+  }
 };
 
 const handleCloseNewPromotionDialog = () => {
@@ -112,6 +193,16 @@ const handleUpdatePromotion = async () => {
     console.error('Error updating promotion:', error);
     alert('Failed to update promotion.');
   }
+};
+
+const handleViewUserDetails = (user) => {
+  setSelectedUser(user);
+  setOpenUserDetails(true);
+};
+
+const handleCloseUserDetails = () => {
+  setOpenUserDetails(false);
+  setSelectedUser(null);
 };
 
 const handleDeletePromotion = async (id) => {
@@ -332,13 +423,13 @@ const handleDeleteStaff = async (staffId) => {
 };
 
     // Open user details
-const handleViewUserDetails = (user) => {
+const handleViewUserDetailsDuplicate = (user) => {
   setSelectedUser(user);
   setOpenUserDetails(true);
 };
 
 // Close user details
-const handleCloseUserDetails = () => {
+const handleCloseUserDetailsDuplicate = () => {
   setOpenUserDetails(false);
   setSelectedUser(null);
 };
@@ -425,12 +516,19 @@ const handleDeletePayment = async (paymentId) => {
 
   const [activeTab, setActiveTab] = useState(0);
   const [appointments, setAppointments] = useState([]);
+  const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [services, setServices] = useState([]);
+  const [filteredServices, setFilteredServices] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [filteredStaff, setFilteredStaff] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [filteredPayments, setFilteredPayments] = useState([]);
   const [promotions, setPromotions] = useState([]);
+  const [filteredPromotions, setFilteredPromotions] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [filteredCategories, setFilteredCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -447,12 +545,19 @@ const handleDeletePayment = async (paymentId) => {
         ]);
 
         setAppointments(appointmentsRes.data.data);
+        setFilteredAppointments(appointmentsRes.data.data); // Initially set to all appointments
         setUsers(usersRes.data.data);
+        setFilteredUsers(usersRes.data.data); // Initially set to all users
         setServices(servicesRes.data.data);
+        setFilteredServices(servicesRes.data.data); // Initially set to all services
         setStaff(staffRes.data.data);
+        setFilteredStaff(staffRes.data.data); // Initially set to all staff
         setPayments(paymentsRes.data.data);
+        setFilteredPayments(paymentsRes.data.data); // Initially set to all payments
         setPromotions(promotionsRes.data.data);
+        setFilteredPromotions(promotionsRes.data.data); // Initially set to all promotions
         setCategories(categoriesRes.data.data);
+        setFilteredCategories(categoriesRes.data.data); // Initially set to all categories
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -462,6 +567,185 @@ const handleDeletePayment = async (paymentId) => {
 
     fetchData();
   }, []);
+
+  // Filter appointments based on search term, date range, and sorting
+  useEffect(() => {
+    if (appointments.length === 0) return;
+
+    let filtered = [...appointments];
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(appointment =>
+        appointment.User?.firstName?.toLowerCase().includes(term) ||
+        appointment.User?.lastName?.toLowerCase().includes(term) ||
+        appointment.User?.email?.toLowerCase().includes(term) ||
+        appointment.Service?.name?.toLowerCase().includes(term) ||
+        appointment.status?.toLowerCase().includes(term)
+      );
+    }
+
+    // Apply date range filter
+    if (dateRange.start) {
+      filtered = filtered.filter(appointment =>
+        new Date(appointment.date) >= new Date(dateRange.start)
+      );
+    }
+
+    if (dateRange.end) {
+      filtered = filtered.filter(appointment =>
+        new Date(appointment.date) <= new Date(dateRange.end)
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortConfig.key) {
+        case 'createdAt':
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
+          break;
+        case 'date':
+          aValue = new Date(a.date);
+          bValue = new Date(b.date);
+          break;
+        case 'status':
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        default:
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
+      }
+
+      if (sortConfig.direction === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    setFilteredAppointments(filtered);
+  }, [appointments, searchTerm, dateRange, sortConfig]);
+
+  // Filter services based on search term
+  useEffect(() => {
+    if (services.length === 0) return;
+
+    let filtered = [...services];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(service =>
+        service.name?.toLowerCase().includes(term) ||
+        service.description?.toLowerCase().includes(term) ||
+        service.category?.toLowerCase().includes(term) ||
+        service.price?.toString().includes(term)
+      );
+    }
+
+    setFilteredServices(filtered);
+  }, [services, searchTerm]);
+
+  // Filter staff based on search term
+  useEffect(() => {
+    if (staff.length === 0) return;
+
+    let filtered = [...staff];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(member =>
+        member.User?.firstName?.toLowerCase().includes(term) ||
+        member.User?.lastName?.toLowerCase().includes(term) ||
+        member.User?.email?.toLowerCase().includes(term) ||
+        member.specialization?.toLowerCase().includes(term) ||
+        member.experience?.toString().includes(term)
+      );
+    }
+
+    setFilteredStaff(filtered);
+  }, [staff, searchTerm]);
+
+  // Filter payments based on search term
+  useEffect(() => {
+    if (payments.length === 0) return;
+
+    let filtered = [...payments];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(payment =>
+        payment.amount?.toString().includes(term) ||
+        payment.status?.toLowerCase().includes(term) ||
+        payment.paymentMethod?.toLowerCase().includes(term) ||
+        payment.Appointment?.User?.firstName?.toLowerCase().includes(term) ||
+        payment.Appointment?.User?.lastName?.toLowerCase().includes(term)
+      );
+    }
+
+    setFilteredPayments(filtered);
+  }, [payments, searchTerm]);
+
+  // Filter promotions based on search term
+  useEffect(() => {
+    if (promotions.length === 0) return;
+
+    let filtered = [...promotions];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(promotion =>
+        promotion.code?.toLowerCase().includes(term) ||
+        promotion.description?.toLowerCase().includes(term) ||
+        promotion.discountType?.toLowerCase().includes(term) ||
+        promotion.discountValue?.toString().includes(term)
+      );
+    }
+
+    setFilteredPromotions(filtered);
+  }, [promotions, searchTerm]);
+
+  // Filter users based on search term
+  useEffect(() => {
+    if (users.length === 0) return;
+
+    let filtered = [...users];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(user =>
+        user.firstName?.toLowerCase().includes(term) ||
+        user.lastName?.toLowerCase().includes(term) ||
+        user.email?.toLowerCase().includes(term) ||
+        user.phone?.toLowerCase().includes(term) ||
+        user.role?.toLowerCase().includes(term)
+      );
+    }
+
+    setFilteredUsers(filtered);
+  }, [users, searchTerm]);
+
+  // Filter categories based on search term
+  useEffect(() => {
+    if (categories.length === 0) return;
+
+    let filtered = [...categories];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(category =>
+        category.name?.toLowerCase().includes(term) ||
+        category.description?.toLowerCase().includes(term) ||
+        category.isActive?.toString().includes(term)
+      );
+    }
+
+    setFilteredCategories(filtered);
+  }, [categories, searchTerm]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -601,14 +885,63 @@ const handleDeletePayment = async (paymentId) => {
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             mb: 2,
-            gap: 1
+            gap: 2
           }}>
-            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-              Appointments
-            </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Appointments
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, alignItems: 'center' }}>
+                <TextField
+                  label="Search Appointments"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 250 } }}
+                />
+                <TextField
+                  label="From Date"
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ maxWidth: { xs: '100%', sm: 150 } }}
+                />
+                <TextField
+                  label="To Date"
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ maxWidth: { xs: '100%', sm: 150 } }}
+                />
+                <TextField
+                  select
+                  label="Sort By"
+                  value={`${sortConfig.key}-${sortConfig.direction}`}
+                  onChange={(e) => {
+                    const [key, direction] = e.target.value.split('-');
+                    setSortConfig({ key, direction });
+                  }}
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 150 } }}
+                >
+                  <MenuItem value="createdAt-desc">Newest First</MenuItem>
+                  <MenuItem value="createdAt-asc">Oldest First</MenuItem>
+                  <MenuItem value="date-asc">Date Ascending</MenuItem>
+                  <MenuItem value="date-desc">Date Descending</MenuItem>
+                  <MenuItem value="status-asc">Status A-Z</MenuItem>
+                </TextField>
+              </Box>
+            </Box>
             <Button
               variant="contained"
-              onClick={() => alert('New appointment functionality would go here')}
+              onClick={() => navigate('/appointments/new')}
               sx={{
                 borderRadius: 2,
                 fontWeight: 'bold',
@@ -626,7 +959,7 @@ const handleDeletePayment = async (paymentId) => {
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {appointments.map((appointment) => (
+              {filteredAppointments.map((appointment) => (
                 <Grid item xs={12} key={appointment.id}>
                   <Paper
                     sx={{
@@ -828,11 +1161,21 @@ const handleDeletePayment = async (paymentId) => {
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             mb: 2,
-            gap: 1
+            gap: 2
           }}>
-            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-              Users
-            </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Users
+              </Typography>
+              <TextField
+                label="Search Users"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
             <Button
               variant="contained"
               onClick={() => alert('New user functionality would go here')}
@@ -853,7 +1196,7 @@ const handleDeletePayment = async (paymentId) => {
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <Grid item xs={12} key={user.id}>
                   <Paper
                     sx={{
@@ -915,7 +1258,7 @@ const handleDeletePayment = async (paymentId) => {
                       <Button
                         variant="outlined"
                         size="small"
-                        onClick={() => alert('Edit functionality would go here')}
+                        onClick={() => handleViewUserDetails(user)}
                         sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                       >
                         Edit
@@ -999,11 +1342,21 @@ const handleDeletePayment = async (paymentId) => {
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             mb: 2,
-            gap: 1
+            gap: 2
           }}>
-            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-              Services
-            </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Services
+              </Typography>
+              <TextField
+                label="Search Services"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
             <Button
               variant="contained"
               onClick={handleOpenNewServiceDialog}
@@ -1024,7 +1377,7 @@ const handleDeletePayment = async (paymentId) => {
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {services.map((service) => (
+              {filteredServices.map((service) => (
                 <Grid item xs={12} key={service.id}>
                   <Paper
                     sx={{
@@ -1267,11 +1620,21 @@ const handleDeletePayment = async (paymentId) => {
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             mb: 2,
-            gap: 1
+            gap: 2
           }}>
-            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-              Staff
-            </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Staff
+              </Typography>
+              <TextField
+                label="Search Staff"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
             <Button
               variant="contained"
               onClick={handleOpenNewStaffDialog}
@@ -1292,7 +1655,7 @@ const handleDeletePayment = async (paymentId) => {
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {staff.map((staffMember) => (
+              {filteredStaff.map((staffMember) => (
                 <Grid item xs={12} key={staffMember.id}>
                   <Paper
                     sx={{
@@ -1372,11 +1735,21 @@ const handleDeletePayment = async (paymentId) => {
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             mb: 2,
-            gap: 1
+            gap: 2
           }}>
-            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-              Payments
-            </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Payments
+              </Typography>
+              <TextField
+                label="Search Payments"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
             <Button
               variant="contained"
               onClick={() => alert('New payment functionality would go here')}
@@ -1397,7 +1770,7 @@ const handleDeletePayment = async (paymentId) => {
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {payments.map((payment) => (
+              {filteredPayments.map((payment) => (
                 <Grid item xs={12} key={payment.id}>
                   <Paper
                     sx={{
@@ -1477,11 +1850,21 @@ const handleDeletePayment = async (paymentId) => {
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             mb: 2,
-            gap: 1
+            gap: 2
           }}>
-            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-              Promotions
-            </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Promotions
+              </Typography>
+              <TextField
+                label="Search Promotions"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
             <Button
               variant="contained"
               onClick={handleOpenNewPromotionDialog}
@@ -1502,7 +1885,7 @@ const handleDeletePayment = async (paymentId) => {
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {promotions.map((promo) => (
+              {filteredPromotions.map((promo) => (
                 <Grid item xs={12} key={promo.id}>
                   <Paper
                     sx={{
@@ -1566,11 +1949,21 @@ const handleDeletePayment = async (paymentId) => {
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             mb: 2,
-            gap: 1
+            gap: 2
           }}>
-            <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-              Categories
-            </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Categories
+              </Typography>
+              <TextField
+                label="Search Categories"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
             <Button
               variant="contained"
               onClick={() => setOpenNewCategoryDialog(true)}
@@ -1591,7 +1984,7 @@ const handleDeletePayment = async (paymentId) => {
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {categories.map((category) => (
+              {filteredCategories.map((category) => (
                 <Grid item xs={12} sm={6} md={4} key={category.id}>
                   <Paper
                     sx={{
@@ -1747,6 +2140,80 @@ const handleDeletePayment = async (paymentId) => {
           >
             Update Category
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* User Details Dialog */}
+      <Dialog open={openUserDetails} onClose={handleCloseUserDetails} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit User</DialogTitle>
+        <DialogContent dividers>
+          {selectedUser && (
+            <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="First Name"
+                value={selectedUser.firstName || ""}
+                onChange={(e) =>
+                  setSelectedUser((prev) => ({ ...prev, firstName: e.target.value }))
+                }
+              />
+              <TextField
+                label="Last Name"
+                value={selectedUser.lastName || ""}
+                onChange={(e) =>
+                  setSelectedUser((prev) => ({ ...prev, lastName: e.target.value }))
+                }
+              />
+              <TextField
+                label="Email"
+                type="email"
+                value={selectedUser.email || ""}
+                onChange={(e) =>
+                  setSelectedUser((prev) => ({ ...prev, email: e.target.value }))
+                }
+              />
+              <TextField
+                label="Phone"
+                value={selectedUser.phone || ""}
+                onChange={(e) =>
+                  setSelectedUser((prev) => ({ ...prev, phone: e.target.value }))
+                }
+              />
+              <FormControl fullWidth>
+                <InputLabel>Role</InputLabel>
+                <Select
+                  value={selectedUser.role || ""}
+                  onChange={(e) =>
+                    setSelectedUser((prev) => ({ ...prev, role: e.target.value }))
+                  }
+                >
+                  <MenuItem value="customer">Customer</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                  <MenuItem value="staff">Staff</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={selectedUser.isActive !== undefined ? selectedUser.isActive : true}
+                    onChange={(e) =>
+                      setSelectedUser((prev) => ({ ...prev, isActive: e.target.checked }))
+                    }
+                    color="primary"
+                  />
+                }
+                label="Active"
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button color="error" onClick={() => handleDeleteUser(selectedUser.id)}>
+            Delete
+          </Button>
+          <Button color="primary" onClick={() => handleEditUser(selectedUser)}>
+            Save Changes
+          </Button>
+          <Button onClick={handleCloseUserDetails}>Close</Button>
         </DialogActions>
       </Dialog>
 

@@ -337,7 +337,7 @@ exports.getMe = async (req, res, next) => {
 // @access  Private
 exports.updateDetails = async (req, res, next) => {
   // Only allow specific fields to be updated
-  const allowedFields = ['firstName', 'lastName', 'email', 'phone', 'address'];
+  const allowedFields = ['firstName', 'lastName', 'email', 'phone', 'address', 'avatar'];
   const fieldsToUpdate = {};
 
   // Filter only allowed fields
@@ -346,6 +346,11 @@ exports.updateDetails = async (req, res, next) => {
       fieldsToUpdate[field] = req.body[field];
     }
   });
+
+  // Handle avatar upload if file is provided
+  if (req.file) {
+    fieldsToUpdate.avatar = req.file.path; // or req.file.location if using cloud storage
+  }
 
   // Validate email if provided
   if (fieldsToUpdate.email) {
