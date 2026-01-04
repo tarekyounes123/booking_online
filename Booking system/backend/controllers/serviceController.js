@@ -4,6 +4,118 @@ const asyncHandler = require('../middleware/async');
 const path = require('path');
 const fs = require('fs');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Services
+ *   description: Service management
+ */
+
+/**
+ * @swagger
+ * /api/services:
+ *   get:
+ *     summary: Get all services
+ *     tags: [Services]
+ *     responses:
+ *       200:
+ *         description: List of services
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 2
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       name:
+ *                         type: string
+ *                         example: "Haircut"
+ *                       description:
+ *                         type: string
+ *                         example: "Professional haircut service"
+ *                       price:
+ *                         type: number
+ *                         example: 25.00
+ *                       duration:
+ *                         type: integer
+ *                         example: 30
+ */
+
+/**
+ * @swagger
+ * /api/services:
+ *   post:
+ *     summary: Create a new service
+ *     tags: [Services]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Haircut"
+ *               description:
+ *                 type: string
+ *                 example: "Professional haircut service"
+ *               price:
+ *                 type: number
+ *                 example: 25.00
+ *               duration:
+ *                 type: integer
+ *                 example: 30
+ *               category:
+ *                 type: string
+ *                 example: "Hair"
+ *     responses:
+ *       201:
+ *         description: Service created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     name:
+ *                       type: string
+ *                       example: "Haircut"
+ *                     description:
+ *                       type: string
+ *                       example: "Professional haircut service"
+ *                     price:
+ *                       type: number
+ *                       example: 25.00
+ *                     duration:
+ *                       type: integer
+ *                       example: 30
+ *       400:
+ *         description: Validation error
+ */
+
 // @desc      Get all services
 // @route     GET /api/services
 // @access    Public
@@ -16,7 +128,7 @@ exports.getServices = asyncHandler(async (req, res, next) => {
       }
     ],
     where: { isActive: true },
-    order: [['name', 'ASC']]
+    order: [['position', 'ASC'], ['name', 'ASC']]
   });
 
   res.status(200).json({
@@ -73,13 +185,18 @@ exports.createService = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Service price is required', 400));
   }
 
+  // Get the highest position value to set the new service at the end
+  const maxPositionService = await Service.max('position');
+  const nextPosition = maxPositionService ? maxPositionService + 1 : 0;
+
   const serviceData = {
     name,
     description,
     duration: parseInt(duration),
     price: parseFloat(price),
     category,
-    branchId: branchId ? parseInt(branchId) : null
+    branchId: branchId ? parseInt(branchId) : null,
+    position: nextPosition
   };
 
   // If there's an image uploaded, add the image path to the service data
@@ -113,7 +230,7 @@ exports.updateService = asyncHandler(async (req, res, next) => {
   }
 
   // Extract fields from req.body
-  const { name, description, duration, price, category, branchId, isActive } = req.body;
+  const { name, description, duration, price, category, branchId, isActive, position } = req.body;
 
   const serviceData = {};
 
@@ -125,6 +242,7 @@ exports.updateService = asyncHandler(async (req, res, next) => {
   if (category !== undefined && category !== '') serviceData.category = category;
   if (branchId !== undefined && branchId !== '') serviceData.branchId = parseInt(branchId);
   if (isActive !== undefined && isActive !== '') serviceData.isActive = isActive === 'true';
+  if (position !== undefined && position !== '') serviceData.position = parseInt(position);
 
   // If there's a new image uploaded, handle the old image deletion and set the new image
   if (req.file) {
@@ -173,9 +291,9 @@ exports.deleteService = asyncHandler(async (req, res, next) => {
 // @access    Public
 exports.getServicesByBranch = asyncHandler(async (req, res, next) => {
   const services = await Service.findAll({
-    where: { 
+    where: {
       branchId: req.params.branchId,
-      isActive: true 
+      isActive: true
     },
     include: [
       {
@@ -183,7 +301,7 @@ exports.getServicesByBranch = asyncHandler(async (req, res, next) => {
         attributes: ['id', 'name', 'address', 'city']
       }
     ],
-    order: [['name', 'ASC']]
+    order: [['position', 'ASC'], ['name', 'ASC']]
   });
 
   res.status(200).json({

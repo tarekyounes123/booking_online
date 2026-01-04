@@ -80,7 +80,7 @@ export const serviceAPI = {
     const formData = new FormData();
 
     // Add only the fields that should be updated to form data (excluding imageFile and the original image field)
-    const fieldsToInclude = ['name', 'description', 'duration', 'price', 'category', 'branchId', 'isActive'];
+    const fieldsToInclude = ['name', 'description', 'duration', 'price', 'category', 'branchId', 'isActive', 'position'];
     fieldsToInclude.forEach(key => {
       if (serviceData[key] !== undefined && serviceData[key] !== null) {
         formData.append(key, serviceData[key]);
@@ -204,6 +204,30 @@ export const notificationAPI = {
   sendAppointmentReminder: (reminderData) => API.post('/notifications/appointment-reminder', reminderData),
   markAllAsRead: () => API.put('/notifications/mark-all-read'),
   getUnreadCount: () => API.get('/notifications/unread-count')
+};
+
+// Newsletter API calls
+export const newsletterAPI = {
+  subscribe: (email) => API.post('/newsletter/subscribe', { email }),
+  unsubscribe: (email) => API.post('/newsletter/unsubscribe', { email })
+};
+
+// Calendar API calls
+export const calendarAPI = {
+  getStatus: () => API.get('/calendar/status'),
+  getSettings: () => API.get('/calendar/settings'),
+  updateSettings: (settings) => API.put('/calendar/settings', settings),
+  syncAppointment: (appointmentId, platforms) => API.post(`/calendar/sync/${appointmentId}`, { platforms })
+};
+
+// Webhook API calls
+export const webhookAPI = {
+  getWebhooks: () => API.get('/webhooks'),
+  getWebhook: (id) => API.get(`/webhooks/${id}`),
+  createWebhook: (webhookData) => API.post('/webhooks', webhookData),
+  updateWebhook: (id, webhookData) => API.put(`/webhooks/${id}`, webhookData),
+  deleteWebhook: (id) => API.delete(`/webhooks/${id}`),
+  testWebhook: (id) => API.post(`/webhooks/${id}/test`)
 };
 
 export default API;

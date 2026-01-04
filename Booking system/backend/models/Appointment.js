@@ -97,6 +97,10 @@ module.exports = (sequelize, DataTypes) => {
         model: 'branches',
         key: 'id'
       }
+    },
+    metadata: {
+      type: DataTypes.JSON,
+      allowNull: true
     }
   }, {
     // Model options

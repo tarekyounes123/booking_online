@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Typography, Grid, Paper, Button, Card, CardContent, CardActions, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Box, Chip, FormControlLabel, Switch } from '@mui/material';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI, promotionAPI, categoryAPI } from '../services/api';
 
 const AdminDashboard = () => {
@@ -354,6 +355,50 @@ const handleDeleteService = async (serviceId) => {
   } catch (error) {
     console.error("Failed to delete service:", error);
     alert("Failed to delete service");
+  }
+};
+
+// Drag and drop handler for services
+const onDragEnd = async (result) => {
+  if (!result.destination) return;
+
+  const items = Array.from(filteredServices);
+  const [reorderedItem] = items.splice(result.source.index, 1);
+  items.splice(result.destination.index, 0, reorderedItem);
+
+  // Update the state with the new order
+  setFilteredServices(items);
+  setServices(prev => {
+    // Update the main services state to reflect the new order
+    const updatedServices = [...prev];
+    const serviceIndex = updatedServices.findIndex(s => s.id === reorderedItem.id);
+    if (serviceIndex !== -1) {
+      updatedServices[serviceIndex] = { ...updatedServices[serviceIndex], position: result.destination.index };
+    }
+    return updatedServices;
+  });
+
+  // Update the service position in the database
+  try {
+    await serviceAPI.updateService(reorderedItem.id, { position: result.destination.index });
+  } catch (error) {
+    console.error("Failed to update service position:", error);
+    // If the update fails, revert the UI changes
+    setFilteredServices(prev => {
+      const revertedItems = Array.from(prev);
+      const [movedItem] = revertedItems.splice(result.destination.index, 1);
+      revertedItems.splice(result.source.index, 0, movedItem);
+      return revertedItems;
+    });
+    setServices(prev => {
+      const revertedServices = [...prev];
+      const serviceIndex = revertedServices.findIndex(s => s.id === reorderedItem.id);
+      if (serviceIndex !== -1) {
+        revertedServices[serviceIndex] = { ...revertedServices[serviceIndex], position: result.source.index };
+      }
+      return revertedServices;
+    });
+    alert("Failed to update service position in database");
   }
 };
 
@@ -873,6 +918,12 @@ const handleDeletePayment = async (paymentId) => {
           <Tab label="Payments" />
           <Tab label="Promotions" />
           <Tab label="Categories" />
+          <Tab label="Content" />
+          <Tab label="Files" />
+          <Tab label="Forms" />
+          <Tab label="Calendar" />
+          <Tab label="Webhooks" />
+          <Tab label="API Docs" />
         </Tabs>
       </Paper>
 
@@ -1376,59 +1427,76 @@ const handleDeletePayment = async (paymentId) => {
               </div>
             </Box>
           ) : (
-            <Grid container spacing={2}>
-              {filteredServices.map((service) => (
-                <Grid item xs={12} key={service.id}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 2
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                        {service.name}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
-                        Description: {service.description}<br/>
-                        Price: ${service.price}<br />
-                        Duration: {service.duration} min<br />
-                        Category: {service.category}
-                      </Typography>
-                    </Box>
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: { xs: 'row', sm: 'column' },
-                      gap: 1,
-                      flexShrink: 0
-                    }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handleViewServiceDetails(service)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => alert('Delete functionality would go here')}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                        color="error"
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="services">
+                {(provided) => (
+                  <div {...provided.droppableProps} ref={provided.innerRef}>
+                    <Grid container spacing={2}>
+                      {filteredServices.map((service, index) => (
+                        <Grid item xs={12} key={service.id}>
+                          <Draggable draggableId={service.id.toString()} index={index}>
+                            {(provided) => (
+                              <Paper
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                sx={{
+                                  p: 2,
+                                  borderRadius: 2,
+                                  display: 'flex',
+                                  flexDirection: { xs: 'column', sm: 'row' },
+                                  justifyContent: 'space-between',
+                                  alignItems: 'flex-start',
+                                  gap: 2,
+                                  backgroundColor: '#f9f9f9'
+                                }}
+                              >
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                  <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                                    {service.name}
+                                  </Typography>
+                                  <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
+                                    Description: {service.description}<br/>
+                                    Price: ${service.price}<br />
+                                    Duration: {service.duration} min<br />
+                                    Category: {service.category}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{
+                                  display: 'flex',
+                                  flexDirection: { xs: 'row', sm: 'column' },
+                                  gap: 1,
+                                  flexShrink: 0
+                                }}>
+                                  <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={() => handleViewServiceDetails(service)}
+                                    sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => alert('Delete functionality would go here')}
+                                    sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                                    color="error"
+                                  >
+                                    Delete
+                                  </Button>
+                                </Box>
+                              </Paper>
+                            )}
+                          </Draggable>
+                        </Grid>
+                      ))}
+                      {provided.placeholder}
+                    </Grid>
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           )}
         </Paper>
       )}
@@ -2048,6 +2116,252 @@ const handleDeletePayment = async (paymentId) => {
               ))}
             </Grid>
           )}
+        </Paper>
+      )}
+
+      {activeTab === 7 && (
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 2
+          }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Content Management
+              </Typography>
+              <TextField
+                label="Search Content"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => window.location.href = '/admin/content'}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Manage Content
+            </Button>
+          </Box>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Use the content management system to create and edit website content, pages, and articles.
+          </Typography>
+        </Paper>
+      )}
+
+      {activeTab === 8 && (
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 2
+          }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                File Management
+              </Typography>
+              <TextField
+                label="Search Files"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => window.location.href = '/admin/files'}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Manage Files
+            </Button>
+          </Box>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Upload, organize, and manage media files and documents for your website.
+          </Typography>
+        </Paper>
+      )}
+
+      {activeTab === 9 && (
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 2
+          }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Form Builder
+              </Typography>
+              <TextField
+                label="Search Forms"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => window.location.href = '/admin/forms'}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Build Forms
+            </Button>
+          </Box>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Create custom forms for collecting user data, feedback, and other information.
+          </Typography>
+        </Paper>
+      )}
+
+      {activeTab === 10 && (
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 2
+          }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Calendar Integration
+              </Typography>
+              <TextField
+                label="Search Calendar Settings"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => window.location.href = '/admin/calendar'}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Configure Calendar
+            </Button>
+          </Box>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Connect your calendar applications to automatically sync appointments.
+          </Typography>
+        </Paper>
+      )}
+
+      {activeTab === 11 && (
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 2
+          }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                Webhook Management
+              </Typography>
+              <TextField
+                label="Search Webhooks"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => window.location.href = '/admin/webhooks'}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Manage Webhooks
+            </Button>
+          </Box>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Configure webhooks to receive real-time notifications about system events.
+          </Typography>
+        </Paper>
+      )}
+
+      {activeTab === 12 && (
+        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 2,
+            gap: 2
+          }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                API Documentation
+              </Typography>
+              <TextField
+                label="Search API Docs"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => window.location.href = '/api-docs'}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 'bold',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              View Documentation
+            </Button>
+          </Box>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Access comprehensive API documentation with interactive testing tools.
+          </Typography>
         </Paper>
       )}
 

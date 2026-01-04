@@ -1,7 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, Grid, Paper } from '@mui/material';
 import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI } from '../services/api';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  LineController,
+  BarController,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+} from 'chart.js';
+import { Bar, Line, Pie, Doughnut } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  LineController,
+  BarController,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
 const Analytics = () => {
   const [appointments, setAppointments] = useState([]);
@@ -176,16 +205,42 @@ const Analytics = () => {
             <Typography variant="h6" className="mb-3">
               Revenue by Service
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={revenueByService}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`$${value}`, 'Revenue']} />
-                <Legend />
-                <Bar dataKey="revenue" name="Revenue" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
+            <Bar
+              data={{
+                labels: revenueByService.map(item => item.name),
+                datasets: [
+                  {
+                    label: 'Revenue',
+                    data: revenueByService.map(item => item.revenue),
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                  },
+                  title: {
+                    display: true,
+                    text: 'Revenue by Service'
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: function(value) {
+                        return '$' + value;
+                      }
+                    }
+                  }
+                }
+              }}
+            />
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
@@ -193,16 +248,42 @@ const Analytics = () => {
             <Typography variant="h6" className="mb-3">
               Monthly Revenue
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`$${value}`, 'Revenue']} />
-                <Legend />
-                <Bar dataKey="revenue" name="Revenue" fill="#82ca9d" />
-              </BarChart>
-            </ResponsiveContainer>
+            <Line
+              data={{
+                labels: monthlyData.map(item => item.name),
+                datasets: [
+                  {
+                    label: 'Revenue',
+                    data: monthlyData.map(item => item.revenue),
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                  },
+                  title: {
+                    display: true,
+                    text: 'Monthly Revenue Trend'
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: function(value) {
+                        return '$' + value;
+                      }
+                    }
+                  }
+                }
+              }}
+            />
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
@@ -210,26 +291,39 @@ const Analytics = () => {
             <Typography variant="h6" className="mb-3">
               Appointment Status
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={true}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => [value, 'Count']} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <Pie
+              data={{
+                labels: statusData.map(item => item.name),
+                datasets: [
+                  {
+                    data: statusData.map(item => item.value),
+                    backgroundColor: [
+                      'rgba(255, 99, 132, 0.6)',
+                      'rgba(54, 162, 235, 0.6)',
+                      'rgba(255, 205, 86, 0.6)'
+                    ],
+                    borderColor: [
+                      'rgba(255, 99, 132, 1)',
+                      'rgba(54, 162, 235, 1)',
+                      'rgba(255, 205, 86, 1)'
+                    ],
+                    borderWidth: 1,
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                  },
+                  title: {
+                    display: true,
+                    text: 'Appointment Status Distribution'
+                  }
+                }
+              }}
+            />
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
@@ -237,16 +331,46 @@ const Analytics = () => {
             <Typography variant="h6" className="mb-3">
               Service Popularity
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={revenueByService}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="count" name="Number of Appointments" fill="#ffc658" />
-              </BarChart>
-            </ResponsiveContainer>
+            <Doughnut
+              data={{
+                labels: revenueByService.map(item => item.name),
+                datasets: [
+                  {
+                    label: 'Number of Appointments',
+                    data: revenueByService.map(item => item.count),
+                    backgroundColor: [
+                      'rgba(255, 99, 132, 0.6)',
+                      'rgba(54, 162, 235, 0.6)',
+                      'rgba(255, 205, 86, 0.6)',
+                      'rgba(75, 192, 192, 0.6)',
+                      'rgba(153, 102, 255, 0.6)',
+                      'rgba(255, 159, 64, 0.6)'
+                    ],
+                    borderColor: [
+                      'rgba(255, 99, 132, 1)',
+                      'rgba(54, 162, 235, 1)',
+                      'rgba(255, 205, 86, 1)',
+                      'rgba(75, 192, 192, 1)',
+                      'rgba(153, 102, 255, 1)',
+                      'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1,
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                  },
+                  title: {
+                    display: true,
+                    text: 'Service Popularity'
+                  }
+                }
+              }}
+            />
           </Paper>
         </Grid>
       </Grid>

@@ -13,6 +13,7 @@ import {
   CardMedia
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 import { serviceAPI } from '../services/api';
 
 const ServicesPage = () => {
@@ -36,7 +37,18 @@ const ServicesPage = () => {
   }, []);
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <div>
+      <Helmet>
+        <title>Services - Booking System - Professional Appointment Services</title>
+        <meta name="description" content="Browse our wide range of professional services. Book appointments online for all your needs with our easy-to-use system." />
+        <meta name="keywords" content="services, appointment services, booking services, professional services, online booking" />
+        <meta property="og:title" content="Services - Booking System - Professional Appointment Services" />
+        <meta property="og:description" content="Browse our wide range of professional services. Book appointments online for all your needs with our easy-to-use system." />
+        <meta property="og:url" content={window.location.href} />
+        <meta name="twitter:title" content="Services - Booking System - Professional Appointment Services" />
+        <meta name="twitter:description" content="Browse our wide range of professional services. Book appointments online for all your needs with our easy-to-use system." />
+      </Helmet>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ textAlign: 'center', mb: 6 }}>
         <Typography component="h1" variant="h3" gutterBottom className="fw-bold">
           Our Services
@@ -164,7 +176,8 @@ const ServicesPage = () => {
         </Grid>
       )}
     </Container>
-  );
+  </div>
+);
 };
 
 export default ServicesPage;

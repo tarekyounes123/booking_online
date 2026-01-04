@@ -79,6 +79,10 @@ module.exports = (sequelize, DataTypes) => {
         model: 'branches', // This references the 'branches' table
         key: 'id'
       }
+    },
+    position: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
     }
   }, {
     // Model options

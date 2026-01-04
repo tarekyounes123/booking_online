@@ -1,3 +1,16 @@
-# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+Allow: /services
+Allow: /services/*
+Allow: /gallery
+Allow: /login
+Allow: /register
+
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /staff
+Disallow: /profile
+Disallow: /appointment/*
+Disallow: /checkout/*
+
+Sitemap: https://your-booking-site.com/sitemap.xml

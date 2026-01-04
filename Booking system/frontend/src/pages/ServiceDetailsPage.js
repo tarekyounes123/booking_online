@@ -15,6 +15,8 @@ import {
   Snackbar,
   Alert
 } from '@mui/material';
+import { Helmet } from 'react-helmet';
+import { generateServiceSchema } from '../utils/structuredData';
 import { useAuth } from '../context/AuthContext';
 import { serviceAPI } from '../services/api';
 
@@ -116,7 +118,25 @@ const ServiceDetailsPage = () => {
   const hasReviewed = reviews.some(review => review.userId === user?.id);
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <div>
+      <Helmet>
+        <title>{service.name} - Booking System</title>
+        <meta name="description" content={`${service.description} - Book this service online with our easy-to-use booking system. Duration: ${service.duration} minutes, Price: $${service.price}.`} />
+        <meta name="keywords" content={`${service.name}, ${service.category}, booking service, appointment service, ${service.description.substring(0, 50)}`} />
+        <meta property="og:title" content={`${service.name} - Booking System`} />
+        <meta property="og:description" content={`${service.description} - Book this service online with our easy-to-use booking system. Duration: ${service.duration} minutes, Price: $${service.price}.`} />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:type" content="product" />
+        {service.image && <meta property="og:image" content={service.image} />}
+        <meta name="twitter:title" content={`${service.name} - Booking System`} />
+        <meta name="twitter:description" content={`${service.description} - Book this service online with our easy-to-use booking system. Duration: ${service.duration} minutes, Price: $${service.price}.`} />
+        <meta name="twitter:card" content="summary_large_image" />
+        {service.image && <meta name="twitter:image" content={service.image} />}
+        <script type="application/ld+json">
+          {JSON.stringify(generateServiceSchema(service))}
+        </script>
+      </Helmet>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={4}>
         <Grid item xs={12} md={7}>
           <Card sx={{ borderRadius: 3, boxShadow: 2 }}>
@@ -161,6 +181,70 @@ const ServiceDetailsPage = () => {
               >
                 Book This Service
               </Button>
+
+              {/* Social Sharing Buttons */}
+              <Box sx={{ mt: 2, textAlign: 'center' }}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Share this service:
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      const url = encodeURIComponent(window.location.href);
+                      const text = encodeURIComponent(`Check out this service: ${service.name}`);
+                      window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`, '_blank');
+                    }}
+                    sx={{ minWidth: 'auto', p: 1 }}
+                  >
+                    <i className="fab fa-facebook-f" style={{ fontSize: '1rem' }}></i>
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      const text = encodeURIComponent(`Check out this service: ${service.name} - ${window.location.href}`);
+                      window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+                    }}
+                    sx={{ minWidth: 'auto', p: 1 }}
+                  >
+                    <i className="fab fa-twitter" style={{ fontSize: '1rem' }}></i>
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      const url = encodeURIComponent(window.location.href);
+                      const text = encodeURIComponent(`Check out this service: ${service.name}`);
+                      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${text}`, '_blank');
+                    }}
+                    sx={{ minWidth: 'auto', p: 1 }}
+                  >
+                    <i className="fab fa-linkedin-in" style={{ fontSize: '1rem' }}></i>
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      const text = `Check out this service: ${service.name} - ${window.location.href}`;
+                      if (navigator.share) {
+                        navigator.share({
+                          title: service.name,
+                          text: `Check out this service: ${service.name}`,
+                          url: window.location.href
+                        });
+                      } else {
+                        navigator.clipboard.writeText(text);
+                        setReviewSnackbar({ open: true, message: 'Link copied to clipboard!', severity: 'success' });
+                      }
+                    }}
+                    sx={{ minWidth: 'auto', p: 1 }}
+                  >
+                    <i className="fas fa-share" style={{ fontSize: '1rem' }}></i>
+                  </Button>
+                </Box>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
@@ -259,7 +343,8 @@ const ServiceDetailsPage = () => {
         </Alert>
       </Snackbar>
     </Container>
-  );
+  </div>
+);
 };
 
 export default ServiceDetailsPage;

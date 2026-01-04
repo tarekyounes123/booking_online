@@ -3,6 +3,125 @@ const { Op } = require('sequelize');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const sendEmail = require('../utils/sendEmail');
+const { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } = require('../utils/calendarIntegration');
+const webhookService = require('../utils/webhookService');
+
+/**
+ * @swagger
+ * tags:
+ *   name: Appointments
+ *   description: Appointment management
+ */
+
+/**
+ * @swagger
+ * /api/appointments:
+ *   get:
+ *     summary: Get all appointments
+ *     tags: [Appointments]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of appointments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 2
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       date:
+ *                         type: string
+ *                         format: date
+ *                         example: "2023-12-25"
+ *                       startTime:
+ *                         type: string
+ *                         example: "09:00:00"
+ *                       endTime:
+ *                         type: string
+ *                         example: "10:00:00"
+ *                       status:
+ *                         type: string
+ *                         example: "pending"
+ */
+
+/**
+ * @swagger
+ * /api/appointments:
+ *   post:
+ *     summary: Create a new appointment
+ *     tags: [Appointments]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               serviceId:
+ *                 type: integer
+ *                 example: 1
+ *               date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2023-12-25"
+ *               startTime:
+ *                 type: string
+ *                 example: "09:00:00"
+ *               endTime:
+ *                 type: string
+ *                 example: "10:00:00"
+ *               staffId:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       201:
+ *         description: Appointment created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     date:
+ *                       type: string
+ *                       format: date
+ *                       example: "2023-12-25"
+ *                     startTime:
+ *                       type: string
+ *                       example: "09:00:00"
+ *                     endTime:
+ *                       type: string
+ *                       example: "10:00:00"
+ *                     status:
+ *                       type: string
+ *                       example: "pending"
+ *       400:
+ *         description: Validation error
+ */
 
 // @desc      Get all appointments
 // @route     GET /api/appointments
@@ -195,6 +314,63 @@ exports.createAppointment = asyncHandler(async (req, res, next) => {
   }
 
   const newAppointment = await Appointment.create(appointmentData);
+
+  // --- Create Calendar Events ---
+  // Using setTimeout to create calendar events asynchronously without blocking the response
+  setTimeout(async () => {
+    try {
+      const appointmentDetails = await Appointment.findByPk(newAppointment.id, {
+        include: [
+          { model: User, attributes: ['firstName', 'lastName', 'email', 'phone'] },
+          { model: Service, attributes: ['name', 'duration', 'price'] },
+          {
+            model: Staff,
+            include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+          }
+        ]
+      });
+
+      if (appointmentDetails) {
+        // Create calendar events for the appointment
+        await createCalendarEvent(appointmentDetails, ['google']);
+        console.log(`Calendar events created for appointment ${appointmentDetails.id}`);
+      }
+    } catch (error) {
+      console.error('Could not create calendar events. Error:', error);
+      // Do not block the response for this failure. The appointment is already booked.
+    }
+  }, 0);
+  // --- End of Calendar Event Logic ---
+
+  // --- Trigger Webhooks ---
+  // Using setTimeout to trigger webhooks asynchronously without blocking the response
+  setTimeout(async () => {
+    try {
+      const appointmentDetails = await Appointment.findByPk(newAppointment.id, {
+        include: [
+          { model: User, attributes: ['firstName', 'lastName', 'email', 'phone'] },
+          { model: Service, attributes: ['name', 'duration', 'price'] },
+          {
+            model: Staff,
+            include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+          }
+        ]
+      });
+
+      if (appointmentDetails) {
+        // Trigger webhook for appointment creation
+        await webhookService.triggerWebhooks('appointment.created', {
+          appointment: appointmentDetails.toJSON(),
+          timestamp: new Date().toISOString()
+        });
+        console.log(`Webhooks triggered for appointment creation ${appointmentDetails.id}`);
+      }
+    } catch (error) {
+      console.error('Could not trigger webhooks for appointment creation. Error:', error);
+      // Do not block the response for this failure. The appointment is already booked.
+    }
+  }, 0);
+  // --- End of Webhook Logic ---
 
   // --- Send Confirmation Email ---
   // Using setTimeout to send email asynchronously without blocking the response
@@ -528,6 +704,63 @@ exports.updateAppointment = asyncHandler(async (req, res, next) => {
       validate: true // Explicitly enable validation
     });
 
+    // --- Update Calendar Events ---
+    // Using setTimeout to update calendar events asynchronously without blocking the response
+    setTimeout(async () => {
+      try {
+        const appointmentDetails = await Appointment.findByPk(updatedAppointment.id, {
+          include: [
+            { model: User, attributes: ['firstName', 'lastName', 'email', 'phone'] },
+            { model: Service, attributes: ['name', 'duration', 'price'] },
+            {
+              model: Staff,
+              include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+            }
+          ]
+        });
+
+        if (appointmentDetails) {
+          // Update calendar events for the appointment
+          await updateCalendarEvent(appointmentDetails, ['google']);
+          console.log(`Calendar events updated for appointment ${appointmentDetails.id}`);
+        }
+      } catch (error) {
+        console.error('Could not update calendar events. Error:', error);
+        // Do not block the response for this failure. The appointment is already updated.
+      }
+    }, 0);
+    // --- End of Calendar Event Logic ---
+
+    // --- Trigger Webhooks ---
+    // Using setTimeout to trigger webhooks asynchronously without blocking the response
+    setTimeout(async () => {
+      try {
+        const appointmentDetails = await Appointment.findByPk(updatedAppointment.id, {
+          include: [
+            { model: User, attributes: ['firstName', 'lastName', 'email', 'phone'] },
+            { model: Service, attributes: ['name', 'duration', 'price'] },
+            {
+              model: Staff,
+              include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+            }
+          ]
+        });
+
+        if (appointmentDetails) {
+          // Trigger webhook for appointment update
+          await webhookService.triggerWebhooks('appointment.updated', {
+            appointment: appointmentDetails.toJSON(),
+            timestamp: new Date().toISOString()
+          });
+          console.log(`Webhooks triggered for appointment update ${appointmentDetails.id}`);
+        }
+      } catch (error) {
+        console.error('Could not trigger webhooks for appointment update. Error:', error);
+        // Do not block the response for this failure. The appointment is already updated.
+      }
+    }, 0);
+    // --- End of Webhook Logic ---
+
     res.status(200).json({
       success: true,
       data: updatedAppointment
@@ -609,6 +842,65 @@ exports.deleteAppointment = asyncHandler(async (req, res, next) => {
       )
     );
   }
+
+  // --- Delete Calendar Events ---
+  // Using setTimeout to delete calendar events asynchronously before the appointment is deleted
+  setTimeout(async () => {
+    try {
+      // Get the appointment details before deletion
+      const appointmentDetails = await Appointment.findByPk(appointment.id, {
+        include: [
+          { model: User, attributes: ['firstName', 'lastName', 'email', 'phone'] },
+          { model: Service, attributes: ['name', 'duration', 'price'] },
+          {
+            model: Staff,
+            include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+          }
+        ]
+      });
+
+      if (appointmentDetails) {
+        // Delete calendar events for the appointment
+        await deleteCalendarEvent(appointmentDetails, ['google']);
+        console.log(`Calendar events deleted for appointment ${appointmentDetails.id}`);
+      }
+    } catch (error) {
+      console.error('Could not delete calendar events. Error:', error);
+      // Do not block the response for this failure. The appointment will still be deleted.
+    }
+  }, 0);
+  // --- End of Calendar Event Logic ---
+
+  // --- Trigger Webhooks ---
+  // Using setTimeout to trigger webhooks asynchronously before the appointment is deleted
+  setTimeout(async () => {
+    try {
+      // Get the appointment details before deletion
+      const appointmentDetails = await Appointment.findByPk(appointment.id, {
+        include: [
+          { model: User, attributes: ['firstName', 'lastName', 'email', 'phone'] },
+          { model: Service, attributes: ['name', 'duration', 'price'] },
+          {
+            model: Staff,
+            include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+          }
+        ]
+      });
+
+      if (appointmentDetails) {
+        // Trigger webhook for appointment deletion
+        await webhookService.triggerWebhooks('appointment.deleted', {
+          appointment: appointmentDetails.toJSON(),
+          timestamp: new Date().toISOString()
+        });
+        console.log(`Webhooks triggered for appointment deletion ${appointmentDetails.id}`);
+      }
+    } catch (error) {
+      console.error('Could not trigger webhooks for appointment deletion. Error:', error);
+      // Do not block the response for this failure. The appointment will still be deleted.
+    }
+  }, 0);
+  // --- End of Webhook Logic ---
 
   await appointment.destroy();
 

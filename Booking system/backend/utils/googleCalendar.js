@@ -18,7 +18,12 @@ const createCalendarEvent = async (appointment) => {
     const calendar = initializeCalendar();
 
     // Get staff calendar ID
-    const staff = await Staff.findByPk(appointment.staffId);
+    const staff = await Staff.findByPk(appointment.staffId, {
+      include: [{
+        model: User,
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      }]
+    });
     if (!staff || !staff.calendarId) {
       throw new Error('Staff calendar not configured');
     }
@@ -55,6 +60,18 @@ const createCalendarEvent = async (appointment) => {
       sendNotifications: true,
     });
 
+    // Store the Google Calendar event ID in the appointment metadata
+    if (response.data && response.data.id) {
+      // Initialize metadata if it doesn't exist
+      if (!appointment.metadata) {
+        appointment.metadata = {};
+      }
+
+      // Update the appointment with the Google Calendar event ID
+      appointment.metadata.googleEventId = response.data.id;
+      await appointment.update({ metadata: appointment.metadata });
+    }
+
     return response.data;
   } catch (error) {
     console.error('Error creating calendar event:', error);
@@ -68,14 +85,17 @@ const updateCalendarEvent = async (appointment) => {
     const calendar = initializeCalendar();
 
     // Get staff calendar ID
-    const staff = await Staff.findByPk(appointment.staffId);
+    const staff = await Staff.findByPk(appointment.staffId, {
+      include: [{
+        model: User,
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      }]
+    });
     if (!staff || !staff.calendarId) {
       throw new Error('Staff calendar not configured');
     }
 
     // Find the existing event ID from appointment metadata
-    // In a real implementation, you'd store the event ID in the appointment
-    // For this example, we'll assume the event ID is stored in metadata
     if (!appointment.metadata || !appointment.metadata.googleEventId) {
       throw new Error('Google Calendar event ID not found');
     }
@@ -118,7 +138,12 @@ const deleteCalendarEvent = async (appointment) => {
     const calendar = initializeCalendar();
 
     // Get staff calendar ID
-    const staff = await Staff.findByPk(appointment.staffId);
+    const staff = await Staff.findByPk(appointment.staffId, {
+      include: [{
+        model: User,
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      }]
+    });
     if (!staff || !staff.calendarId) {
       throw new Error('Staff calendar not configured');
     }

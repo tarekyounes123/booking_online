@@ -5,9 +5,11 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const swaggerUi = require('swagger-ui-express');
 const { connectDB } = require('./config/db');
 const { limiter, authLimiter, apiLimiter, securityMiddleware } = require('./middleware/security');
 const { scheduleAppointmentReminders } = require('./utils/appointmentReminders');
+const swaggerSpecs = require('./utils/swagger');
 
 // Connect to database
 connectDB();
@@ -58,6 +60,12 @@ app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/gallery', require('./routes/gallery'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/newsletter', require('./routes/newsletter'));
+app.use('/api/calendar', require('./routes/calendar'));
+app.use('/api/webhooks', require('./routes/webhooks'));
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

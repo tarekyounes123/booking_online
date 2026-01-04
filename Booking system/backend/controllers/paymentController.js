@@ -1,6 +1,7 @@
 const { Payment, Appointment, User, Promotion, Service } = require('../models');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
+const webhookService = require('../utils/webhookService');
 
 // @desc      Apply promotion code to appointment
 // @route     POST /api/payments/apply-promotion
@@ -188,6 +189,42 @@ exports.createPayment = asyncHandler(async (req, res, next) => {
 
     // If everything is successful, commit the transaction
     await t.commit();
+
+    // --- Trigger Webhooks ---
+    // Using setTimeout to trigger webhooks asynchronously without blocking the response
+    setTimeout(async () => {
+      try {
+        // Get the payment details with related data
+        const paymentDetails = await Payment.findByPk(payment.id, {
+          include: [
+            {
+              model: Appointment,
+              include: [
+                { model: User, attributes: ['id', 'firstName', 'lastName', 'email'] },
+                { model: Service, attributes: ['name', 'duration', 'price'] },
+                {
+                  model: require('../models').Staff,
+                  include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+                }
+              ]
+            }
+          ]
+        });
+
+        if (paymentDetails) {
+          // Trigger webhook for payment completion
+          await webhookService.triggerWebhooks('payment.completed', {
+            payment: paymentDetails.toJSON(),
+            timestamp: new Date().toISOString()
+          });
+          console.log(`Webhooks triggered for payment completion ${paymentDetails.id}`);
+        }
+      } catch (error) {
+        console.error('Could not trigger webhooks for payment completion. Error:', error);
+        // Do not block the response for this failure. The payment is already created.
+      }
+    }, 0);
+    // --- End of Webhook Logic ---
 
     res.status(200).json({
       success: true,

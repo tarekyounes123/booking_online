@@ -1,11 +1,35 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 
 const HomePage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="container">
+    <div>
+      <Helmet>
+        <title>Home - Booking System - Online Appointment Booking</title>
+        <meta name="description" content="Book appointments easily and efficiently with our online booking platform. Professional scheduling system for all your appointment needs." />
+        <meta name="keywords" content="appointment booking, online booking, scheduling, appointment management, booking system, online scheduler" />
+        <meta property="og:title" content="Home - Booking System - Online Appointment Booking" />
+        <meta property="og:description" content="Book appointments easily and efficiently with our online booking platform. Professional scheduling system for all your appointment needs." />
+        <meta property="og:url" content={window.location.href} />
+        <meta name="twitter:title" content="Home - Booking System - Online Appointment Booking" />
+        <meta name="twitter:description" content="Book appointments easily and efficiently with our online booking platform. Professional scheduling system for all your appointment needs." />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [{
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": window.location.origin
+            }]
+          })}
+        </script>
+      </Helmet>
+      <div className="container">
       {/* Hero Section */}
       <div className="row align-items-center py-5">
         <div className="col-lg-6">
@@ -119,7 +143,8 @@ const HomePage = () => {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default HomePage;
