@@ -246,7 +246,7 @@ const HomePage = () => {
               <Typography variant="h2" sx={{ color: 'white', mb: 2 }}>Premium Services.</Typography>
               <Typography sx={{ color: 'rgba(255,255,255,0.5)' }}>Discover our most popular booking categories</Typography>
             </Box>
-            <Button endIcon={<ArrowIcon />} sx={{ color: '#818cf8', fontWeight: 700 }}>View All</Button>
+            <Button href="/services" endIcon={<ArrowIcon />} sx={{ color: '#818cf8', fontWeight: 700 }}>View All</Button>
           </Box>
 
           <Grid container spacing={4}>

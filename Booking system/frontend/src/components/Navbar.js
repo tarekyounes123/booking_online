@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -31,9 +31,11 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import ThemeSettingsContext from '../context/ThemeSettingsContext';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { settings: themeSettings } = useContext(ThemeSettingsContext);
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -51,9 +53,11 @@ const Navbar = () => {
 
   const navItems = [
     { label: t('home'), path: '/', icon: <HomeIcon /> },
+    { label: t('dashboard'), path: '/dashboard', icon: <DashboardIcon /> },
     { label: t('services'), path: '/services', icon: <ServiceIcon /> },
     { label: t('gallery'), path: '/gallery', icon: <GalleryIcon /> },
-    { label: t('dashboard'), path: '/dashboard', icon: <DashboardIcon /> },
+
+
   ];
 
   return (
@@ -107,7 +111,10 @@ const Navbar = () => {
                 fontSize: '1.4rem'
               }}
             >
-              Elite<span style={{ color: '#818cf8' }}>Book</span>
+              {themeSettings?.brandName || 'SARA'}
+              <span style={{ color: themeSettings?.primaryColor || '#818cf8' }}>
+                {themeSettings?.brandNameHighlight || 'Salon'}
+              </span>
             </Typography>
           </Box>
 

@@ -84,6 +84,32 @@ const GalleryPage = () => {
 
   const activeImage = filteredItems[selectedImageIndex];
 
+  // Handle URL hash to open specific image in lightbox
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1); // Remove '#' from hash
+      if (hash && galleryItems.length > 0) {
+        const imageId = parseInt(hash);
+        const imageIndex = galleryItems.findIndex(item => item.id === imageId);
+        if (imageIndex !== -1) {
+          setSelectedImageIndex(imageIndex);
+          setLightboxOpen(true);
+        }
+      }
+    };
+
+    // Check hash on initial load
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [galleryItems]);
+
   // Bento Layout Logic (Simplified Masonry)
   const getMasonryColumns = () => {
     if (isMobile) return 1;
@@ -139,178 +165,285 @@ const GalleryPage = () => {
         pointerEvents: 'none'
       }} />
 
-      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1 }}>
-        {/* Hero Section */}
-        <Box sx={{ mb: 10, textAlign: 'center' }}>
+      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+        {/* Header Section */}
+        <Box sx={{ mb: 8, textAlign: 'center' }}>
           <Fade in timeout={1000}>
             <Box>
               <Typography
-                variant="overline"
+                variant="h2"
                 sx={{
-                  color: 'primary.light',
-                  letterSpacing: 6,
-                  fontWeight: 700,
-                  display: 'block',
-                  mb: 2
-                }}
-              >
-                THE GALLERY
-              </Typography>
-              <Typography
-                variant="h1"
-                sx={{
-                  fontSize: { xs: '3.5rem', md: '7rem' },
-                  fontWeight: 900,
-                  lineHeight: 1,
-                  mb: 4,
-                  background: 'linear-gradient(to bottom, #ffffff 30%, rgba(255,255,255,0.5) 100%)',
+                  fontSize: { xs: '2.5rem', md: '4rem' },
+                  fontWeight: 800,
+                  mb: 2,
+                  background: 'linear-gradient(45deg, #6366f1, #8b5cf6, #ec4899)',
+                  backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
-                  letterSpacing: -2
+                  letterSpacing: '-0.03em'
                 }}
               >
-                Capturing <br /> Excellence.
+                Our Gallery
               </Typography>
               <Typography
-                variant="h5"
+                variant="h6"
                 sx={{
-                  color: 'rgba(225, 225, 225, 0.6)',
-                  maxWidth: 700,
+                  color: 'rgba(255,255,255,0.7)',
+                  maxWidth: 600,
                   mx: 'auto',
-                  lineHeight: 1.6,
-                  fontWeight: 300
+                  lineHeight: 1.6
                 }}
               >
-                Explore our curated collection of premium services and artistic transformations.
+                Discover our collection of premium services and artistic transformations
               </Typography>
             </Box>
           </Fade>
         </Box>
 
-        {/* Categories Bento Bar */}
+        {/* Categories Filter */}
         <Box sx={{
           display: 'flex',
           justifyContent: 'center',
-          mb: 8,
-          position: 'sticky',
-          top: 100,
-          zIndex: 10
+          mb: 6,
+          flexWrap: 'wrap',
+          gap: 1
         }}>
-          <Paper sx={{
-            p: 1,
-            borderRadius: '100px',
-            backgroundColor: 'rgba(15, 15, 15, 0.7)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            display: 'flex',
-            gap: 1,
-            boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
-          }}>
-            {allCategories.map(cat => (
-              <Chip
-                key={cat.id}
-                label={cat.name}
-                onClick={() => setSelectedCategory(cat.id)}
-                sx={{
-                  px: 2,
-                  py: 2.5,
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  borderRadius: '100px',
-                  backgroundColor: selectedCategory === cat.id ? 'white' : 'transparent',
-                  color: selectedCategory === cat.id ? 'black' : 'white',
-                  '&:hover': {
-                    backgroundColor: selectedCategory === cat.id ? 'white' : 'rgba(255,255,255,0.05)',
-                  },
-                  transition: 'all 0.3s ease'
-                }}
-              />
-            ))}
-          </Paper>
+          {allCategories.map(cat => (
+            <Chip
+              key={cat.id}
+              label={cat.name}
+              onClick={() => setSelectedCategory(cat.id)}
+              sx={{
+                px: 3,
+                py: 1.5,
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                borderRadius: '50px',
+                backgroundColor: selectedCategory === cat.id
+                  ? 'primary.main'
+                  : 'rgba(255,255,255,0.08)',
+                color: selectedCategory === cat.id ? 'white' : 'rgba(255,255,255,0.8)',
+                '&:hover': {
+                  backgroundColor: selectedCategory === cat.id
+                    ? 'primary.dark'
+                    : 'rgba(255,255,255,0.15)',
+                },
+                transition: 'all 0.3s ease',
+                border: selectedCategory === cat.id
+                  ? 'none'
+                  : '1px solid rgba(255,255,255,0.1)'
+              }}
+            />
+          ))}
         </Box>
 
-        {/* Masonry Grid */}
+        {/* Gallery Grid */}
         {filteredItems.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 20 }}>
             <CollectionsIcon sx={{ fontSize: 80, color: 'rgba(255,255,255,0.1)', mb: 3 }} />
             <Typography variant="h5" color="text.secondary">No items found in this category.</Typography>
           </Box>
         ) : (
-          <Box sx={{ display: 'flex', gap: 4 }}>
-            {columns.map((col, colIndex) => (
-              <Box key={colIndex} sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {col.map(({ item, originalIndex }) => (
-                  <Fade in key={item.id} timeout={500 + originalIndex * 100}>
-                    <Box
-                      onClick={() => handleImageClick(originalIndex)}
-                      sx={{
-                        position: 'relative',
-                        borderRadius: 6,
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        background: '#111',
-                        border: '1px solid rgba(255,255,255,0.05)',
-                        transition: 'all 0.5s cubic-bezier(0.23, 1, 0.32, 1)',
-                        '&:hover': {
-                          transform: 'scale(1.02) translateY(-10px)',
-                          borderColor: 'rgba(255,255,255,0.2)',
-                          boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
-                          '& .item-overlay': { opacity: 1 },
-                          '& .item-img': { transform: 'scale(1.1)' }
-                        }
-                      }}
-                    >
-                      <Box
-                        className="item-img"
-                        component="img"
-                        src={item.imageUrl}
-                        alt={item.title}
-                        sx={{
-                          width: '100%',
-                          display: 'block',
-                          transition: 'transform 1.2s cubic-bezier(0.23, 1, 0.32, 1)'
+          <Grid container spacing={4}>
+            {filteredItems.map((item, index) => (
+              <Grid item xs={12} sm={6} md={6} lg={4} key={item.id}>
+                <Box
+                  sx={{
+                    position: 'relative',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    background: 'rgba(30, 41, 59, 0.3)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    transition: 'all 0.3s ease',
+                    height: '100%',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+                      borderColor: 'rgba(99, 102, 241, 0.3)',
+                      '& .image-overlay': {
+                        opacity: 1,
+                      },
+                      '& .image-content': {
+                        transform: 'scale(1.05)',
+                      }
+                    }
+                  }}
+                  onClick={() => handleImageClick(filteredItems.findIndex(i => i.id === item.id))}
+                >
+                  {/* Image */}
+                  <Box
+                    className="image-content"
+                    component="img"
+                    src={item.imageUrl}
+                    alt={item.title}
+                    sx={{
+                      width: '100%',
+                      height: 350,
+                      objectFit: 'cover',
+                      display: 'block',
+                      transition: 'transform 0.3s ease'
+                    }}
+                  />
+
+                  {/* Hover Overlay */}
+                  <Box
+                    className="image-overlay"
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 2,
+                      opacity: 0,
+                      transition: 'opacity 0.3s ease',
+                      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    }}
+                  >
+                    <Tooltip title="View Fullscreen">
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleImageClick(filteredItems.findIndex(i => i.id === item.id));
                         }}
-                      />
-                      <Box
-                        className="item-overlay"
                         sx={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'flex-end',
-                          p: 4,
-                          opacity: 0,
-                          transition: 'opacity 0.4s ease'
+                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                          color: 'white',
+                          '&:hover': { backgroundColor: 'rgba(99, 102, 241, 0.8)' }
                         }}
                       >
-                        <Chip
-                          label={item.category || 'General'}
-                          size="small"
-                          sx={{
-                            alignSelf: 'flex-start',
-                            mb: 1.5,
-                            backgroundColor: 'white',
-                            color: 'black',
-                            fontWeight: 700,
-                            fontSize: '0.65rem'
-                          }}
-                        />
-                        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{item.title}</Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {item.description}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Fade>
-                ))}
-              </Box>
+                        <ZoomInIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download Image">
+                      <IconButton
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!item.imageUrl) return;
+
+                          try {
+                            // First, try to get the image as a blob to handle cross-origin issues
+                            const response = await fetch(item.imageUrl);
+                            if (!response.ok) throw new Error('Failed to fetch image');
+
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+
+                            // Create a temporary link to trigger download
+                            const link = document.createElement('a');
+                            link.href = url;
+
+                            // Determine file extension from the URL or content type
+                            let fileName = item.title || `gallery-image-${item.id}`;
+                            const contentType = response.headers.get('content-type');
+                            let ext = '.jpg'; // default extension
+
+                            if (contentType) {
+                              if (contentType.includes('png')) ext = '.png';
+                              else if (contentType.includes('gif')) ext = '.gif';
+                              else if (contentType.includes('webp')) ext = '.webp';
+                            } else {
+                              // Extract extension from URL if possible
+                              const urlExtMatch = item.imageUrl.match(/\.(jpeg|jpg|png|gif|webp)$/i);
+                              if (urlExtMatch) ext = urlExtMatch[0].toLowerCase();
+                            }
+
+                            // Ensure filename has proper extension
+                            if (!fileName.toLowerCase().endsWith(ext)) {
+                              fileName += ext;
+                            }
+
+                            link.download = fileName;
+
+                            // Trigger download
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+
+                            // Clean up the object URL
+                            window.URL.revokeObjectURL(url);
+                          } catch (error) {
+                            console.error('Download failed:', error);
+
+                            // Fallback: try direct link approach
+                            try {
+                              const link = document.createElement('a');
+                              link.href = item.imageUrl;
+                              link.download = item.title || `gallery-image-${item.id}`;
+                              link.target = '_blank';
+                              link.rel = 'noopener noreferrer';
+
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            } catch (fallbackError) {
+                              console.error('Fallback download also failed:', fallbackError);
+                              alert('Could not download the image. Please try saving it from the lightbox view.');
+                            }
+                          }
+                        }}
+                        sx={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                          color: 'white',
+                          '&:hover': { backgroundColor: 'rgba(99, 102, 241, 0.8)' }
+                        }}
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Share Image">
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Create a shareable URL that includes the gallery page with the specific image
+                          const shareUrl = `${window.location.origin}${window.location.pathname}#${item.id}`;
+
+                          if (navigator.share) {
+                            navigator.share({
+                              title: item.title,
+                              text: item.description || 'Check out this image!',
+                              url: shareUrl  // Share the gallery URL with image ID
+                            }).catch(console.error);
+                          } else {
+                            // Fallback: copy the gallery URL with image ID to clipboard
+                            navigator.clipboard.writeText(shareUrl).then(() => {
+                              alert('Gallery link copied to clipboard!');
+                            }).catch(err => {
+                              console.error('Failed to copy: ', err);
+                              // Fallback to opening share dialog in new window
+                              const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(item.title)}`;
+                              window.open(fbShareUrl, '_blank');
+                            });
+                          }
+                        }}
+                        sx={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                          color: 'white',
+                          '&:hover': { backgroundColor: 'rgba(29, 155, 240, 0.8)' } // Twitter blue for share
+                        }}
+                      >
+                        <ShareIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+
+                  {/* Caption */}
+                  <Box sx={{ p: 4, backgroundColor: 'rgba(15, 23, 42, 0.9)' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1, fontSize: '1.2rem' }}>
+                      {item.title}
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {item.description}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
             ))}
-          </Box>
+          </Grid>
         )}
       </Container>
 
@@ -346,8 +479,130 @@ const GalleryPage = () => {
             BROWSE GALLERY
           </Typography>
           <Stack direction="row" spacing={2}>
-            <Tooltip title="Share">
-              <IconButton onClick={() => { }} sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.05)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+            <Tooltip title="Zoom In">
+              <IconButton
+                onClick={() => {
+                  const newZoom = Math.min(zoomLevel + 0.2, 3); // Max zoom level of 3x
+                  setZoomLevel(newZoom);
+                  setIsZoomed(true);
+                }}
+                sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.05)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
+              >
+                <ZoomInIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Zoom Out">
+              <IconButton
+                onClick={() => {
+                  const newZoom = Math.max(zoomLevel - 0.2, 0.5); // Min zoom level of 0.5x
+                  setZoomLevel(newZoom);
+                  if (newZoom <= 1) setIsZoomed(false);
+                }}
+                sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.05)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
+              >
+                <ZoomOutIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Download">
+              <IconButton
+                onClick={async () => {
+                  if (activeImage && activeImage.imageUrl) {
+                    try {
+                      // Get the image as a blob to handle cross-origin issues
+                      const response = await fetch(activeImage.imageUrl);
+                      if (!response.ok) throw new Error('Failed to fetch image');
+
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+
+                      // Create a temporary link to trigger download
+                      const link = document.createElement('a');
+                      link.href = url;
+
+                      // Determine file extension from the URL or content type
+                      let fileName = activeImage.title || `gallery-image-${activeImage.id}`;
+                      const contentType = response.headers.get('content-type');
+                      let ext = '.jpg'; // default extension
+
+                      if (contentType) {
+                        if (contentType.includes('png')) ext = '.png';
+                        else if (contentType.includes('gif')) ext = '.gif';
+                        else if (contentType.includes('webp')) ext = '.webp';
+                      } else {
+                        // Extract extension from URL if possible
+                        const urlExtMatch = activeImage.imageUrl.match(/\.(jpeg|jpg|png|gif|webp)$/i);
+                        if (urlExtMatch) ext = urlExtMatch[0].toLowerCase();
+                      }
+
+                      // Ensure filename has proper extension
+                      if (!fileName.toLowerCase().endsWith(ext)) {
+                        fileName += ext;
+                      }
+
+                      link.download = fileName;
+
+                      // Trigger download
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+
+                      // Clean up the object URL
+                      window.URL.revokeObjectURL(url);
+                    } catch (error) {
+                      console.error('Download failed:', error);
+
+                      // Fallback: try direct link approach
+                      try {
+                        const link = document.createElement('a');
+                        link.href = activeImage.imageUrl;
+                        link.download = activeImage.title || `gallery-image-${activeImage.id}`;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      } catch (fallbackError) {
+                        console.error('Fallback download also failed:', fallbackError);
+                        alert('Could not download the image. Please try right-clicking and selecting "Save image as..."');
+                      }
+                    }
+                  }
+                }}
+                sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.05)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
+              >
+                <DownloadIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Share Image">
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (activeImage && activeImage.id) {
+                    // Create a shareable URL that includes the gallery page with the specific image
+                    const shareUrl = `${window.location.origin}${window.location.pathname}#${activeImage.id}`;
+
+                    if (navigator.share) {
+                      navigator.share({
+                        title: activeImage.title,
+                        text: activeImage.description || 'Check out this image!',
+                        url: shareUrl  // Share the gallery URL with image ID
+                      }).catch(console.error);
+                    } else {
+                      // Fallback: copy the gallery URL with image ID to clipboard
+                      navigator.clipboard.writeText(shareUrl).then(() => {
+                        alert('Gallery link copied to clipboard!');
+                      }).catch(err => {
+                        console.error('Failed to copy: ', err);
+                        // Fallback to opening share dialog in new window
+                        const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(activeImage.title)}`;
+                        window.open(fbShareUrl, '_blank');
+                      });
+                    }
+                  }
+                }}
+                sx={{ color: 'white', backgroundColor: 'rgba(255,255,255,0.1)', '&:hover': { backgroundColor: 'rgba(29, 155, 240, 0.8)' } }}
+              >
                 <ShareIcon />
               </IconButton>
             </Tooltip>
@@ -366,7 +621,8 @@ const GalleryPage = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          position: 'relative'
+          position: 'relative',
+          overflow: 'visible' // Allow overflow when image is zoomed
         }}>
           <IconButton
             onClick={handlePrevImage}
@@ -384,26 +640,56 @@ const GalleryPage = () => {
           </IconButton>
 
           <Box sx={{
-            maxWidth: '85vw',
-            maxHeight: '75vh',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 4
+            justifyContent: 'center',
+            flex: 1,
+            p: 4
           }}>
             <Zoom in timeout={500} key={selectedImageIndex}>
               <Box
                 component="img"
                 src={activeImage?.imageUrl}
                 alt={activeImage?.title}
+                onClick={() => {
+                  // Click to zoom in when not zoomed, zoom out when zoomed
+                  if (isZoomed) {
+                    setZoomLevel(1);
+                    setIsZoomed(false);
+                  } else {
+                    setZoomLevel(Math.min(zoomLevel + 0.5, 3)); // Zoom in by 0.5x
+                    setIsZoomed(true);
+                  }
+                }}
+                onWheelCapture={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const delta = e.deltaY;
+                  if (delta > 0) {
+                    // Scroll down - zoom out
+                    const newZoom = Math.max(zoomLevel - 0.1, 0.5);
+                    setZoomLevel(newZoom);
+                    if (newZoom <= 1) setIsZoomed(false);
+                  } else {
+                    // Scroll up - zoom in
+                    const newZoom = Math.min(zoomLevel + 0.1, 3);
+                    setZoomLevel(newZoom);
+                    setIsZoomed(true);
+                  }
+                }}
                 sx={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  borderRadius: 8,
+                  // Display original image proportions without forcing a shape
+                  maxHeight: '70vh',
+                  maxWidth: '85vw',
                   boxShadow: '0 50px 100px rgba(0,0,0,0.8)',
                   transform: `scale(${zoomLevel})`,
-                  transition: 'transform 0.3s ease'
+                  transformOrigin: 'center center', // Zoom from center
+                  transition: 'transform 0.3s ease',
+                  cursor: isZoomed ? 'zoom-out' : 'zoom-in',
+                  userSelect: 'none',
+                  display: 'block' // Ensure proper display
                 }}
               />
             </Zoom>
@@ -412,20 +698,6 @@ const GalleryPage = () => {
             <Box sx={{ textAlign: 'center', maxWidth: 600 }}>
               <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>{activeImage?.title}</Typography>
               <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.6)', mb: 3 }}>{activeImage?.description}</Typography>
-              <Button
-                startIcon={<DownloadIcon />}
-                variant="outlined"
-                sx={{
-                  borderRadius: '100px',
-                  color: 'white',
-                  borderColor: 'rgba(255,255,255,0.2)',
-                  px: 4,
-                  py: 1.5,
-                  '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.05)' }
-                }}
-              >
-                Download Masterpiece
-              </Button>
             </Box>
           </Box>
 

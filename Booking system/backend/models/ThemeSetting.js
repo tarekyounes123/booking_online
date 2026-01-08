@@ -21,6 +21,14 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             defaultValue: 4
         },
+        brandName: {
+            type: DataTypes.STRING,
+            defaultValue: 'SARA'
+        },
+        brandNameHighlight: {
+            type: DataTypes.STRING,
+            defaultValue: 'Salon'
+        },
         isActive: {
             type: DataTypes.BOOLEAN,
             defaultValue: true

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
     Container,
     Typography,
@@ -17,13 +17,17 @@ import {
     Divider
 } from '@mui/material';
 import { themeAPI } from '../services/api';
+import ThemeSettingsContext from '../context/ThemeSettingsContext';
 
 const AdminThemeSettings = () => {
+    const { refetchTheme } = useContext(ThemeSettingsContext);
     const [formData, setFormData] = useState({
         primaryColor: '#1976d2',
         secondaryColor: '#dc004e',
         fontFamily: 'Roboto, sans-serif',
-        borderRadius: 4
+        borderRadius: 4,
+        brandName: 'SARA',
+        brandNameHighlight: 'Salon'
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -35,8 +39,15 @@ const AdminThemeSettings = () => {
             try {
                 const res = await themeAPI.getTheme();
                 if (res.data.data) {
-                    const { primaryColor, secondaryColor, fontFamily, borderRadius } = res.data.data;
-                    setFormData({ primaryColor, secondaryColor, fontFamily, borderRadius });
+                    const { primaryColor, secondaryColor, fontFamily, borderRadius, brandName, brandNameHighlight } = res.data.data;
+                    setFormData({
+                        primaryColor: primaryColor || '#1976d2',
+                        secondaryColor: secondaryColor || '#dc004e',
+                        fontFamily: fontFamily || 'Roboto, sans-serif',
+                        borderRadius: borderRadius || 4,
+                        brandName: brandName || 'SARA',
+                        brandNameHighlight: brandNameHighlight || 'Salon'
+                    });
                 }
             } catch (err) {
                 console.error('Error fetching theme:', err);
@@ -62,7 +73,10 @@ const AdminThemeSettings = () => {
 
         try {
             await themeAPI.updateTheme(formData);
-            setSuccess('Theme updated successfully! Refresh the page to see changes.');
+            setSuccess('Theme updated successfully!');
+            if (refetchTheme) {
+                refetchTheme();
+            }
         } catch (err) {
             console.error('Error updating theme:', err);
             setError(err.response?.data?.error || 'Failed to update theme');
@@ -84,6 +98,32 @@ const AdminThemeSettings = () => {
 
             <Paper sx={{ p: 4 }}>
                 <form onSubmit={handleSubmit}>
+                    <Typography variant="h6" gutterBottom>Branding</Typography>
+                    <Grid container spacing={3} sx={{ mb: 4 }}>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Brand Name"
+                                name="brandName"
+                                value={formData.brandName || ''}
+                                onChange={handleChange}
+                                helperText="The main part of your brand name (e.g., SARA)."
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Highlighted Brand Name"
+                                name="brandNameHighlight"
+                                value={formData.brandNameHighlight || ''}
+                                onChange={handleChange}
+                                helperText="The part of your brand name to be highlighted (e.g., Salon)."
+                            />
+                        </Grid>
+                    </Grid>
+
+                    <Divider sx={{ mb: 3 }} />
+
                     <Typography variant="h6" gutterBottom>Colors</Typography>
                     <Grid container spacing={3} sx={{ mb: 4 }}>
                         <Grid item xs={12} md={6}>

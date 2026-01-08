@@ -1,28 +1,29 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { themeAPI } from '../services/api';
 import { CircularProgress, Box } from '@mui/material';
+import ThemeSettingsContext from '../context/ThemeSettingsContext';
 
 const ThemeProviderWrapper = ({ children }) => {
     const [themeSettings, setThemeSettings] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchTheme = async () => {
-            try {
-                const res = await themeAPI.getTheme();
-                setThemeSettings(res.data.data);
-            } catch (error) {
-                console.error('Error fetching theme:', error);
-                // Fallback handled by initial state or default logic below
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchTheme();
+    const fetchTheme = useCallback(async () => {
+        try {
+            const res = await themeAPI.getTheme();
+            setThemeSettings(res.data.data);
+        } catch (error) {
+            console.error('Error fetching theme:', error);
+            // Fallback handled by initial state or default logic below
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchTheme();
+    }, [fetchTheme]);
 
     const theme = useMemo(() => {
         const primaryMain = themeSettings?.primaryColor || '#1976d2';
@@ -193,10 +194,12 @@ const ThemeProviderWrapper = ({ children }) => {
     }
 
     return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            {children}
-        </ThemeProvider>
+        <ThemeSettingsContext.Provider value={{ settings: themeSettings, refetchTheme: fetchTheme }}>
+            <ThemeProvider theme={theme}>
+                <CssBaseline />
+                {children}
+            </ThemeProvider>
+        </ThemeSettingsContext.Provider>
     );
 };
 

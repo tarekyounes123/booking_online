@@ -12,6 +12,7 @@ import './App.css';
 
 // Components
 import Navbar from './components/Navbar';
+import DocumentTitleUpdater from './components/DocumentTitleUpdater';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -77,17 +78,8 @@ function App() {
       <ThemeProviderWrapper>
         <Router>
           <div className="App">
+            <DocumentTitleUpdater />
             <Helmet>
-              <title>Booking System - Online Appointment Booking</title>
-              <meta name="description" content="Book appointments online with our easy-to-use system. Manage your bookings, services, and staff efficiently." />
-              <meta name="keywords" content="appointment booking, online booking, scheduling, appointment management, booking system" />
-              <meta property="og:title" content="Booking System - Online Appointment Booking" />
-              <meta property="og:description" content="Book appointments online with our easy-to-use system. Manage your bookings, services, and staff efficiently." />
-              <meta property="og:type" content="website" />
-              <meta property="og:url" content={window.location.href} />
-              <meta name="twitter:card" content="summary_large_image" />
-              <meta name="twitter:title" content="Booking System - Online Appointment Booking" />
-              <meta name="twitter:description" content="Book appointments online with our easy-to-use system. Manage your bookings, services, and staff efficiently." />
               <script type="application/ld+json">
                 {JSON.stringify(generateOrganizationSchema())}
               </script>
