@@ -509,80 +509,122 @@ exports.forgotPassword = async (req, res, next) => {
     where: { email: req.body.email }
   });
 
-  // Even if user is not found, return success to prevent user enumeration
   if (!user) {
-    res.status(200).json({ success: true, data: 'Password reset email sent' });
-    return;
+    return next(new ErrorResponse('There is no user with that email', 404));
   }
 
-  // Get reset token
-  const resetToken = user.getResetPasswordToken();
+  // Generate 6-digit code
+  const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Hash code and set to resetPasswordCode field
+  const resetPasswordCode = crypto
+    .createHash('sha256')
+    .update(resetCode)
+    .digest('hex');
+
+  // Set expire
+  user.resetPasswordCode = resetPasswordCode;
+  user.resetPasswordCodeExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  // Clear legacy tokens if any
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
 
   await user.save({ validateBeforeSave: false });
 
-  // Create reset URL
-  const resetUrl = `${req.protocol}://${req.get(
-    'host'
-  )}/api/auth/resetpassword/${resetToken}`;
-
-  const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
+  const message = `You are receiving this email because you (or someone else) has requested the reset of a password.
+  
+Your password reset code is: ${resetCode}
+  
+This code will expire in 10 minutes.`;
 
   try {
     await sendEmail({
       email: user.email,
-      subject: 'Password Reset Token',
+      subject: 'Password Reset Code',
       message,
     });
 
-    res.status(200).json({ success: true, data: 'Password reset email sent' });
+    res.status(200).json({ success: true, data: 'Email sent' });
   } catch (err) {
     console.log(err);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
+    user.resetPasswordCode = undefined;
+    user.resetPasswordCodeExpires = undefined;
 
     await user.save({ validateBeforeSave: false });
 
-    // Provide more specific error information
-    let errorMessage = 'Email could not be sent, please try again.';
-    if (err.response && err.response.code) {
-      errorMessage = `Email service error: ${err.response.code}. Please contact support.`;
-    } else if (err.message && err.message.includes('ETIMEDOUT')) {
-      errorMessage = 'Email service timeout. Please try again later.';
-    } else if (err.message && err.message.includes('ECONNREFUSED')) {
-      errorMessage = 'Email service connection refused. Please contact support.';
-    } else if (err.message && err.message.includes('authentication')) {
-      errorMessage = 'Email authentication failed. Please contact support.';
-    }
-
-    return next(new ErrorResponse(errorMessage, 500));
+    return next(new ErrorResponse('Email could not be sent', 500));
   }
 };
 
-// @desc    Reset password
-// @route   PUT /api/auth/resetpassword/:resettoken
+// @desc    Verify reset code
+// @route   POST /api/auth/verify-reset-code
 // @access  Public
-exports.resetPassword = async (req, res, next) => {
-  // Get hashed token
-  const resetPasswordToken = crypto
+exports.verifyResetCode = async (req, res, next) => {
+  const { email, code } = req.body;
+
+  if (!email || !code) {
+    return next(new ErrorResponse('Please provide email and code', 400));
+  }
+
+  // Get hashed code
+  const resetPasswordCode = crypto
     .createHash('sha256')
-    .update(req.params.resettoken)
+    .update(code.toString())
     .digest('hex');
 
   const user = await User.findOne({
     where: {
-      resetPasswordToken,
-      resetPasswordExpire: { [Op.gt]: Date.now() }
+      email,
+      resetPasswordCode,
+      resetPasswordCodeExpires: { [Op.gt]: Date.now() }
     }
   });
 
   if (!user) {
-    return next(new ErrorResponse('Invalid token', 400));
+    return next(new ErrorResponse('Invalid or expired code', 400));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: 'Code verified'
+  });
+};
+
+// @desc    Reset password
+// @route   PUT /api/auth/resetpassword
+// @access  Public
+exports.resetPassword = async (req, res, next) => {
+  const { email, code, password } = req.body;
+
+  if (!email || !code || !password) {
+    return next(new ErrorResponse('Please provide email, code and new password', 400));
+  }
+
+  // Get hashed code
+  const resetPasswordCode = crypto
+    .createHash('sha256')
+    .update(code.toString())
+    .digest('hex');
+
+  const user = await User.findOne({
+    where: {
+      email,
+      resetPasswordCode,
+      resetPasswordCodeExpires: { [Op.gt]: Date.now() }
+    }
+  });
+
+  if (!user) {
+    return next(new ErrorResponse('Invalid or expired code', 400));
   }
 
   // Set new password
-  user.password = req.body.password;
+  user.password = password;
 
-  // Remove reset tokens
+  // Clear reset code
+  user.resetPasswordCode = undefined;
+  user.resetPasswordCodeExpires = undefined;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
 

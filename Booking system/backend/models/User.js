@@ -95,6 +95,14 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true
     },
+    resetPasswordCode: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    resetPasswordCodeExpires: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true

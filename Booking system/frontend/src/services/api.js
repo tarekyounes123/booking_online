@@ -35,7 +35,8 @@ export const authAPI = {
   updateDetails: (userData) => API.put('/auth/updatedetails', userData),
   updatePassword: (passwordData) => API.put('/auth/updatepassword', passwordData),
   forgotPassword: (email) => API.post('/auth/forgotpassword', { email }),
-  resetPassword: (token, password) => API.put(`/auth/resetpassword/${token}`, { password }),
+  verifyResetCode: (data) => API.post('/auth/verify-reset-code', data),
+  resetPassword: (data) => API.put('/auth/resetpassword', data),
   verifyUser: (verificationData) => API.post('/auth/verify', verificationData),
   resendVerification: (emailData) => API.post('/auth/resend-verification', emailData)
 };
@@ -110,7 +111,7 @@ export const appointmentAPI = {
   updateAppointment: (id, appointmentData) => API.put(`/appointments/${id}`, appointmentData),
   updateAppointmentStatus: (id, status) => API.put(`/appointments/${id}/status`, { status }),
   deleteAppointment: (id) => API.delete(`/appointments/${id}`),
-  getAvailableSlots: (serviceId, staffId, date) => 
+  getAvailableSlots: (serviceId, staffId, date) =>
     API.get(`/appointments/available-slots?serviceId=${serviceId}&staffId=${staffId}&date=${date}`)
 };
 
