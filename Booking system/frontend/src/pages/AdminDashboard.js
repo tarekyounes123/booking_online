@@ -3698,6 +3698,23 @@ const AdminDashboard = () => {
               variant="outlined"
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
+            <FormControl fullWidth variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}>
+              <InputLabel>Category</InputLabel>
+              <Select
+                value={galleryFormData.categoryId || ''}
+                onChange={(e) => setGalleryFormData({ ...galleryFormData, categoryId: e.target.value })}
+                label="Category"
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <Box>
               <input
                 accept="image/*"
@@ -3730,6 +3747,11 @@ const AdminDashboard = () => {
               {galleryErrors.images && (
                 <Typography color="error" variant="caption" sx={{ ml: 2, mt: 0.5, display: 'block' }}>
                   {galleryErrors.images}
+                </Typography>
+              )}
+              {galleryFormData.images.length > 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {galleryFormData.images.length} image(s) selected.
                 </Typography>
               )}
             </Box>
@@ -3769,6 +3791,65 @@ const AdminDashboard = () => {
               variant="outlined"
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
+            <FormControl fullWidth variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}>
+              <InputLabel>Category</InputLabel>
+              <Select
+                value={galleryFormData.categoryId || ''}
+                onChange={(e) => setGalleryFormData({ ...galleryFormData, categoryId: e.target.value })}
+                label="Category"
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Box>
+                {selectedGalleryItem && selectedGalleryItem.imageUrl && (
+                    <Box sx={{ mb: 2, textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>Current Image</Typography>
+                        <img src={selectedGalleryItem.imageUrl} alt={selectedGalleryItem.title} style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }} />
+                    </Box>
+                )}
+                <input
+                    accept="image/*"
+                    id="gallery-edit-image-upload"
+                    type="file"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setGalleryFormData({ ...galleryFormData, images: [file] });
+                      }
+                    }}
+                />
+                <label htmlFor="gallery-edit-image-upload">
+                    <Button
+                        variant="outlined"
+                        component="span"
+                        fullWidth
+                        startIcon={<AddPhotoAlternateIcon />}
+                        sx={{
+                            borderRadius: 2,
+                            py: 1.5,
+                            borderStyle: 'dashed',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            '&:hover': { borderStyle: 'dashed', backgroundColor: 'rgba(255, 255, 255, 0.05)' }
+                        }}
+                    >
+                        Upload New Image (optional)
+                    </Button>
+                </label>
+                {galleryFormData.images && galleryFormData.images.length > 0 && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        New image selected: {galleryFormData.images[0].name}
+                    </Typography>
+                )}
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>

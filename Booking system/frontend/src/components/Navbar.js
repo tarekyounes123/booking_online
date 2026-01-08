@@ -53,6 +53,7 @@ const Navbar = () => {
     { label: t('home'), path: '/', icon: <HomeIcon /> },
     { label: t('services'), path: '/services', icon: <ServiceIcon /> },
     { label: t('gallery'), path: '/gallery', icon: <GalleryIcon /> },
+    { label: t('dashboard'), path: '/dashboard', icon: <DashboardIcon /> },
   ];
 
   return (

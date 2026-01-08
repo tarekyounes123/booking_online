@@ -14,34 +14,12 @@ const router = express.Router();
 router
   .route('/')
   .get(getGalleryItems)
-  .post(protect, (req, res, next) => {
-    // Use uploadImage middleware to handle multiple images
-    uploadImage(req, res, (err) => {
-      if (err) {
-        return res.status(400).json({
-          success: false,
-          error: err.message
-        });
-      }
-      next();
-    });
-  }, createGalleryItem);
+  .post(protect, uploadImage, createGalleryItem);
 
 router
   .route('/:id')
   .get(getGalleryItem)
-  .put(protect, (req, res, next) => {
-    // Use uploadImage middleware to handle multiple images (but only first one for update)
-    uploadImage(req, res, (err) => {
-      if (err) {
-        return res.status(400).json({
-          success: false,
-          error: err.message
-        });
-      }
-      next();
-    });
-  }, updateGalleryItem) // Allow optional image upload on update
+  .put(protect, uploadImage, updateGalleryItem)
   .delete(protect, deleteGalleryItem);
 
 module.exports = router;
