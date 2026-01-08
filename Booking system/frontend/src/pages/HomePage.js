@@ -1,28 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
 import {
-  Box,
   Container,
   Typography,
   Button,
+  Box,
   Grid,
   Paper,
   Stack,
-  Card,
-  CardContent,
-  CardMedia,
   Skeleton,
   useTheme,
-  Alpha
+  IconButton,
+  Chip,
+  Divider
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 import {
-  EventAvailable as EventIcon,
+  Event as EventIcon,
   Shield as ShieldIcon,
   NotificationsActive as NotifIcon,
-  Search as SearchIcon,
-  ArrowForward as ArrowForwardIcon,
-  Star as StarIcon
+  ArrowForward as ArrowIcon,
+  Star as StarIcon,
+  TrendingUp as TrendingIcon,
+  Group as GroupIcon,
+  Spa as SpaIcon
 } from '@mui/icons-material';
 import { serviceAPI } from '../services/api';
 
@@ -36,7 +37,6 @@ const HomePage = () => {
     const fetchServices = async () => {
       try {
         const response = await serviceAPI.getServices();
-        // Access nested data property from API response
         if (response.data && response.data.data) {
           setServices(response.data.data.slice(0, 4));
         }
@@ -51,393 +51,308 @@ const HomePage = () => {
 
   const features = [
     {
-      title: 'Easy Scheduling',
-      desc: 'Book appointments at your convenience with our intuitive interface. View available slots in real-time.',
-      icon: <EventIcon sx={{ fontSize: 40 }} />,
-      color: '#3f51b5'
+      title: 'Real-time Booking',
+      desc: 'Seamlessly schedule appointments with instant confirmation.',
+      icon: <EventIcon />,
+      color: '#6366f1',
+      size: 'large'
     },
     {
-      title: 'Secure Payments',
-      desc: 'Pay securely online with our integrated system. Multiple payment options for your convenience.',
-      icon: <ShieldIcon sx={{ fontSize: 40 }} />,
-      color: '#4caf50'
+      title: 'Secure & Private',
+      desc: 'Your data is encrypted and protected with industry standards.',
+      icon: <ShieldIcon />,
+      color: '#10b981',
+      size: 'small'
     },
     {
-      title: 'Instant Alerts',
-      desc: 'Receive automated email and SMS reminders. Never miss an important appointment again.',
-      icon: <NotifIcon sx={{ fontSize: 40 }} />,
-      color: '#00bcd4'
+      title: 'Smart Alerts',
+      desc: 'Never miss a slot with automated AI-driven reminders.',
+      icon: <NotifIcon />,
+      color: '#f59e0b',
+      size: 'small'
+    },
+    {
+      title: 'Elite Services',
+      desc: 'Curated professional services tailored to your lifestyle.',
+      icon: <SpaIcon />,
+      color: '#d946ef',
+      size: 'medium'
     }
   ];
 
-  const stats = [
-    { label: 'Appointments Booked', value: '5K+' },
-    { label: 'Happy Customers', value: '1K+' },
-    { label: 'Professional Services', value: '25+' },
-    { label: 'Support', value: '24/7' }
-  ];
-
   return (
-    <Box sx={{ overflowX: 'hidden', backgroundColor: '#fcfcfc' }}>
+    <Box sx={{ position: 'relative', minHeight: '100vh', pb: 10 }}>
       <Helmet>
-        <title>Home - Premium Booking System</title>
-        <meta name="description" content="Book appointments easily and efficiently with our luxury online booking platform." />
+        <title>Elite Experience - Super Modern Booking</title>
       </Helmet>
 
       {/* Hero Section */}
-      <Box
-        sx={{
-          position: 'relative',
-          minHeight: '90vh',
-          display: 'flex',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-          color: 'white',
-          pt: { xs: 8, md: 0 },
-          overflow: 'hidden'
-        }}
-      >
-        {/* Abstract Background Element */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '-20%',
-            right: '-10%',
-            width: '600px',
-            height: '600px',
-            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0) 70%)',
-            borderRadius: '50%',
-            filter: 'blur(60px)',
-            zIndex: 0
-          }}
-        />
-
-        <Container sx={{ position: 'relative', zIndex: 1 }}>
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <Box
+      <Container maxWidth="xl" sx={{ mt: { xs: 4, md: 10 }, mb: 15 }}>
+        <Grid container spacing={6} alignItems="center">
+          <Grid item xs={12} lg={7}>
+            <Box sx={{ position: 'relative', zIndex: 1 }}>
+              <Chip
+                label="NEW GENERATION BOOKING"
                 sx={{
-                  animation: 'fadeInUp 0.8s ease-out',
-                  '@keyframes fadeInUp': {
-                    from: { opacity: 0, transform: 'translateY(30px)' },
-                    to: { opacity: 1, transform: 'translateY(0)' }
-                  }
+                  mb: 3,
+                  background: 'rgba(99, 102, 241, 0.1)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  color: '#818cf8',
+                  fontWeight: 800,
+                  fontSize: '0.75rem',
+                  letterSpacing: '0.1em'
                 }}
-              >
-                <Typography
-                  variant="overline"
+              />
+              <Typography variant="h1" sx={{
+                fontSize: { xs: '3rem', md: '5.5rem' },
+                lineHeight: 1.1,
+                mb: 3,
+                background: 'linear-gradient(to right, #fff, #94a3b8)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'fadeInUp 0.8s ease-out'
+              }}>
+                Book Your <br />
+                <span style={{ color: '#818cf8' }}>Future</span> Today.
+              </Typography>
+              <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.6)', mb: 5, maxWidth: '600px', fontWeight: 400, lineHeight: 1.8 }}>
+                Experience the world's most sophisticated appointment system.
+                Built for those who value time and appreciate precision.
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={() => navigate('/services')}
                   sx={{
-                    fontWeight: 'bold',
-                    letterSpacing: 4,
-                    color: 'primary.light',
-                    mb: 2,
-                    display: 'block'
+                    px: 4, py: 2, fontSize: '1.1rem',
                   }}
                 >
-                  MODERN SCHEDULING
-                </Typography>
-                <Typography
-                  variant="h1"
+                  Explore Services
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  onClick={() => navigate('/login')}
                   sx={{
-                    fontSize: { xs: '2.5rem', md: '4rem' },
-                    fontWeight: 900,
-                    lineHeight: 1.1,
-                    mb: 3,
-                    background: 'linear-gradient(to right, #fff, #94a3b8)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
+                    px: 4, py: 2, fontSize: '1.1rem',
+                    borderColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    backdropFilter: 'blur(10px)',
+                    '&:hover': { borderColor: 'white', background: 'rgba(255,255,255,0.05)' }
                   }}
                 >
-                  Elevate Your Service <br />
-                  <span style={{ color: '#6366f1' }}>With Precision Booking</span>
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{ color: 'grey.400', mb: 5, fontWeight: 400, maxWidth: '600px' }}
-                >
-                  Streamline your appointments with our professional, automated platform designed for high-growth businesses and elite services.
-                </Typography>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    onClick={() => navigate('/appointment/new')}
-                    sx={{
-                      py: 2,
-                      px: 4,
-                      borderRadius: '12px',
-                      backgroundColor: '#6366f1',
-                      fontWeight: 'bold',
-                      fontSize: '1.1rem',
-                      '&:hover': { backgroundColor: '#4f46e5' },
-                      textTransform: 'none',
-                      boxShadow: '0 10px 15px -3px rgba(99, 102, 241, 0.4)'
-                    }}
-                  >
-                    Get Started Now
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="large"
-                    onClick={() => navigate('/services')}
-                    sx={{
-                      py: 2,
-                      px: 4,
-                      borderRadius: '12px',
-                      color: 'white',
-                      borderColor: 'rgba(255,255,255,0.2)',
-                      fontWeight: 'bold',
-                      fontSize: '1.1rem',
-                      '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.05)' },
-                      textTransform: 'none'
-                    }}
-                  >
-                    View Our Services
-                  </Button>
-                </Stack>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={5} sx={{ display: { xs: 'none', md: 'block' } }}>
-              <Box
-                sx={{
-                  p: 3,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: '30px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-                  transform: 'perspective(1000px) rotateY(-15deg) rotateX(10deg)',
-                  animation: 'float 6s ease-in-out infinite',
-                  '@keyframes float': {
-                    '0%, 100%': { transform: 'perspective(1000px) rotateY(-15deg) rotateX(10deg) translateY(0)' },
-                    '50%': { transform: 'perspective(1000px) rotateY(-15deg) rotateX(10deg) translateY(-20px)' }
-                  }
-                }}
-              >
-                {/* Mockup UI Elements */}
-                <Box sx={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '15px', p: 2, mb: 2 }}>
-                  <Box sx={{ height: '8px', width: '40%', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '4px', mb: 1 }} />
-                  <Box sx={{ height: '15px', width: '80%', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
-                </Box>
-                <Grid container spacing={1}>
-                  {[1, 2, 3, 4].map(i => (
-                    <Grid item xs={12} key={i}>
-                      <Box sx={{ p: 2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ width: '40px', height: '40px', backgroundColor: 'rgba(99, 102, 241, 0.2)', borderRadius: '8px' }} />
-                        <Box sx={{ flex: 1 }}>
-                          <Box sx={{ height: '8px', width: '60%', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '4px', mb: 0.5 }} />
-                          <Box sx={{ height: '6px', width: '40%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
-                        </Box>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            </Grid>
+                  Get Started
+                </Button>
+              </Stack>
+            </Box>
           </Grid>
-        </Container>
-      </Box>
-
-      {/* Features Section */}
-      <Container sx={{ py: 12 }}>
-        <Typography
-          variant="h3"
-          align="center"
-          sx={{ fontWeight: 800, mb: 2 }}
-        >
-          Engineered for Excellence
-        </Typography>
-        <Typography
-          variant="body1"
-          align="center"
-          sx={{ color: 'text.secondary', mb: 8, maxWidth: '600px', mx: 'auto' }}
-        >
-          We build tools that empower businesses to focus on what matters most—delivering exceptional service to their clients.
-        </Typography>
-
-        <Grid container spacing={4}>
-          {features.map((f, idx) => (
-            <Grid item xs={12} md={4} key={idx}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 4,
-                  height: '100%',
-                  borderRadius: '24px',
-                  backgroundColor: 'white',
-                  border: '1px solid #f1f5f9',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-10px)',
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05)'
-                  }
-                }}
-              >
-                <Box
-                  sx={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '16px',
-                    backgroundColor: `${f.color}15`,
-                    color: f.color,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mb: 3
-                  }}
-                >
-                  {f.icon}
+          <Grid item xs={12} lg={5}>
+            <Box sx={{
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: '-20%',
+                right: '-20%',
+                width: '140%',
+                height: '140%',
+                background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+                zIndex: -1
+              }
+            }}>
+              <Paper sx={{
+                p: 1,
+                borderRadius: '32px',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(20px)',
+                transform: { lg: 'perspective(1000px) rotateY(-10deg) rotateX(5deg)' },
+                boxShadow: '0 32px 64px rgba(0,0,0,0.5)'
+              }}>
+                <Box sx={{ p: 4 }}>
+                  <Stack spacing={3}>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f56' }} />
+                      <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#ffbd2e' }} />
+                      <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#27c93f' }} />
+                    </Box>
+                    <Box sx={{ height: 300, background: 'rgba(0,0,0,0.2)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <TrendingIcon sx={{ fontSize: 100, color: 'rgba(255,255,255,0.1)' }} />
+                    </Box>
+                    <Stack spacing={1}>
+                      <Skeleton variant="text" width="60%" height={30} sx={{ bgcolor: 'rgba(255,255,255,0.05)' }} />
+                      <Skeleton variant="text" width="90%" height={20} sx={{ bgcolor: 'rgba(255,255,255,0.05)' }} />
+                      <Skeleton variant="text" width="80%" height={20} sx={{ bgcolor: 'rgba(255,255,255,0.05)' }} />
+                    </Stack>
+                  </Stack>
                 </Box>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
-                  {f.title}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
-                  {f.desc}
-                </Typography>
+              </Paper>
+            </Box>
+          </Grid>
+        </Grid>
+      </Container>
+
+      {/* Bento Grid Features */}
+      <Container maxWidth="xl" sx={{ mb: 20 }}>
+        <Typography variant="h2" sx={{ textAlign: 'center', mb: 8, color: 'white' }}>
+          Crafted for Excellence.
+        </Typography>
+        <Grid container spacing={3}>
+          {features.map((f, idx) => (
+            <Grid item xs={12} md={f.size === 'large' ? 8 : 4} key={idx}>
+              <Paper sx={{
+                height: '100%',
+                p: 5,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: 'pointer',
+                '&:hover': {
+                  transform: 'translateY(-10px)',
+                  background: 'rgba(255,255,255,0.06)',
+                  borderColor: f.color
+                }
+              }}>
+                <Box>
+                  <Box sx={{
+                    width: 60, height: 60, borderRadius: '16px',
+                    background: `${f.color}22`,
+                    color: f.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    mb: 4,
+                    fontSize: 30
+                  }}>
+                    {f.icon}
+                  </Box>
+                  <Typography variant="h4" sx={{ mb: 2, color: 'white', fontWeight: 800 }}>{f.title}</Typography>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.1rem' }}>{f.desc}</Typography>
+                </Box>
+                <IconButton sx={{ alignSelf: 'flex-end', mt: 4, color: f.color }}>
+                  <ArrowIcon />
+                </IconButton>
               </Paper>
             </Grid>
           ))}
         </Grid>
       </Container>
 
-      {/* Popular Services Section */}
-      <Box sx={{ backgroundColor: '#f8fafc', py: 12 }}>
-        <Container>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 6 }}>
+      {/* Services Preview */}
+      <Box sx={{ background: 'rgba(129, 140, 248, 0.03)', py: 15, borderY: '1px solid rgba(255,255,255,0.05)' }}>
+        <Container maxWidth="xl">
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 8 }}>
             <Box>
-              <Typography variant="h3" sx={{ fontWeight: 800, mb: 1 }}>
-                Explore Services
-              </Typography>
-              <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-                Handpicked professional services for your convenience
-              </Typography>
+              <Typography variant="h2" sx={{ color: 'white', mb: 2 }}>Premium Services.</Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.5)' }}>Discover our most popular booking categories</Typography>
             </Box>
-            <Button
-              variant="text"
-              onClick={() => navigate('/services')}
-              endIcon={<ArrowForwardIcon />}
-              sx={{ fontWeight: 'bold', color: '#6366f1', textTransform: 'none' }}
-            >
-              View All
-            </Button>
+            <Button endIcon={<ArrowIcon />} sx={{ color: '#818cf8', fontWeight: 700 }}>View All</Button>
           </Box>
 
           <Grid container spacing={4}>
-            {loading ? (
-              [1, 2, 3, 4].map((i) => (
-                <Grid item xs={12} sm={6} md={3} key={i}>
-                  <Skeleton variant="rectangular" height={200} sx={{ borderRadius: '20px', mb: 2 }} />
-                  <Skeleton width="60%" height={24} sx={{ mb: 1 }} />
-                  <Skeleton width="40%" height={20} />
-                </Grid>
-              ))
-            ) : services.length === 0 ? (
-              <Grid item xs={12} sx={{ textAlign: 'center', py: 4 }}>
-                <Typography color="text.secondary">No services available at the moment.</Typography>
+            {loading ? Array(4).fill(0).map((_, i) => (
+              <Grid item xs={12} sm={6} md={3} key={i}>
+                <Skeleton variant="rectangular" height={300} sx={{ borderRadius: '24px', bgcolor: 'rgba(255,255,255,0.05)' }} />
               </Grid>
-            ) : (
-              services.map((service) => (
-                <Grid item xs={12} sm={6} md={3} key={service.id}>
-                  <Card
-                    elevation={0}
-                    sx={{
-                      borderRadius: '20px',
-                      overflow: 'hidden',
-                      height: '100%',
-                      border: '1px solid #e2e8f0',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'scale(1.02)',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                      }
-                    }}
-                  >
-                    <CardMedia
-                      component="img"
-                      height="180"
-                      image={service.image || '/placeholder-service.jpg'}
-                      alt={service.name}
-                      sx={{ filter: 'brightness(0.9)' }}
+            )) : services.map((s) => (
+              <Grid item xs={12} sm={6} md={3} key={s.id}>
+                <Paper sx={{
+                  borderRadius: '24px',
+                  overflow: 'hidden',
+                  p: 0,
+                  transition: 'all 0.4s',
+                  '&:hover': { transform: 'scale(1.02)' }
+                }}>
+                  <Box sx={{ height: 200, position: 'relative' }}>
+                    {s.image ? (
+                      <img src={s.image} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <Box sx={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #312e81, #581c87)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <SpaIcon sx={{ fontSize: 60, opacity: 0.2 }} />
+                      </Box>
+                    )}
+                    <Chip
+                      label={`$${s.price}`}
+                      secondary
+                      sx={{ position: 'absolute', top: 16, left: 16, fontWeight: 800, backdropFilter: 'blur(10px)', background: 'rgba(0,0,0,0.5)' }}
                     />
-                    <CardContent sx={{ p: 3 }}>
-                      <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 'bold', mb: 1, display: 'block' }}>
-                        {service.Category?.name || 'Service'}
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, height: '3.6em', overflow: 'hidden' }}>
-                        {service.name}
-                      </Typography>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: '900', color: 'text.primary' }}>
-                          ${service.price}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
-                          {service.duration} mins
-                        </Typography>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))
-            )}
+                  </Box>
+                  <Box sx={{ p: 3 }}>
+                    <Typography variant="h5" sx={{ color: 'white', mb: 1, fontWeight: 700 }}>{s.name}</Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', mb: 3, height: 40, overflow: 'hidden' }}>{s.description}</Typography>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={() => navigate(`/appointment/new?service=${s.id}`)}
+                      sx={{ borderRadius: '12px' }}
+                    >
+                      Book Invitation
+                    </Button>
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
           </Grid>
         </Container>
       </Box>
 
-      {/* Stats Section */}
-      <Container sx={{ py: 12 }}>
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 4, md: 8 },
-            borderRadius: '40px',
-            background: '#0f172a',
-            color: 'white',
-            textAlign: 'center'
-          }}
-        >
-          <Grid container spacing={4}>
-            {stats.map((s, idx) => (
-              <Grid item xs={6} md={3} key={idx}>
-                <Typography variant="h2" sx={{ fontWeight: 900, color: '#6366f1', mb: 1 }}>
-                  {s.value}
-                </Typography>
-                <Typography variant="subtitle1" sx={{ color: 'grey.400', fontWeight: 'medium' }}>
-                  {s.label}
-                </Typography>
-              </Grid>
-            ))}
+      {/* Features & Trust */}
+      <Container maxWidth="xl" sx={{ mt: 20 }}>
+        <Grid container spacing={10}>
+          <Grid item xs={12} md={6}>
+            <Typography variant="h2" sx={{ mb: 4, color: 'white' }}>Why the Elite choose us?</Typography>
+            <Stack spacing={4}>
+              <Box sx={{ display: 'flex', gap: 3 }}>
+                <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: '#818cf822', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <TrendingIcon />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ color: 'white', mb: 1 }}>Performance Optimized</Typography>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)' }}>Lightning fast booking flow that respects your time.</Typography>
+                </Box>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 3 }}>
+                <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: '#d946ef22', color: '#d946ef', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <GroupIcon />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ color: 'white', mb: 1 }}>Concierge Support</Typography>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)' }}>Dedicated 24/7 support for all your scheduling needs.</Typography>
+                </Box>
+              </Box>
+            </Stack>
           </Grid>
-        </Paper>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ position: 'relative' }}>
+              <Paper sx={{ p: 4, borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <Stack spacing={4}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h5" sx={{ color: 'white' }}>Global Satisfaction</Typography>
+                    <Typography variant="h4" sx={{ color: '#818cf8', fontWeight: 900 }}>99.9%</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 0.5, color: '#f59e0b' }}>
+                    <StarIcon /><StarIcon /><StarIcon /><StarIcon /><StarIcon />
+                  </Box>
+                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
+                  <Typography sx={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>
+                    "This is exactly what the industry needed. A professional, beautiful, and efficient way to handle appointments."
+                  </Typography>
+                </Stack>
+              </Paper>
+            </Box>
+          </Grid>
+        </Grid>
       </Container>
 
-      {/* Trust Section */}
-      <Container sx={{ pb: 12 }}>
-        <Box
-          sx={{
-            p: 4,
-            borderRadius: '24px',
-            border: '2px dashed #e2e8f0',
-            textAlign: 'center'
-          }}
-        >
-          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3 }}>
-            Trusted by Excellence
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={4}
-            justifyContent="center"
-            alignItems="center"
-            sx={{ opacity: 0.5, filter: 'grayscale(1)' }}
-          >
-            {/* Simple logo placeholders */}
-            <Typography variant="h6" className="fw-bold">PLATINUM</Typography>
-            <Typography variant="h6" className="fw-bold">ELITE</Typography>
-            <Typography variant="h6" className="fw-bold">PRIME</Typography>
-            <Typography variant="h6" className="fw-bold">GLOBAL</Typography>
-          </Stack>
-        </Box>
-      </Container>
+      {/* Animations */}
+      <style>
+        {`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}
+      </style>
     </Box>
   );
 };

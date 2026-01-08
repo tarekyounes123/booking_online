@@ -31,7 +31,6 @@ import CheckoutPage from './pages/CheckoutPage';
 import UserProfile from './pages/UserProfile';
 import AppointmentDetails from './pages/AppointmentDetails';
 import GalleryPage from './pages/GalleryPage';
-import AdminGalleryPage from './pages/AdminGalleryPage';
 import CategoryManagementPage from './pages/CategoryManagementPage';
 import ContentManagementPage from './pages/ContentManagementPage';
 import FileManagerPage from './pages/FileManagerPage';
@@ -173,14 +172,6 @@ function App() {
                     element={
                       <AdminRoute>
                         <Analytics />
-                      </AdminRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/gallery"
-                    element={
-                      <AdminRoute>
-                        <AdminGalleryPage />
                       </AdminRoute>
                     }
                   />

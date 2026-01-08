@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container, Typography, Grid, Paper, Button, Card, CardContent, CardActions,
   Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
@@ -17,13 +17,17 @@ import {
   Person as PersonIcon,
   Phone as PhoneIcon,
   WhatsApp as WhatsAppIcon,
-  Info as InfoOutlinedIcon
+  Info as InfoOutlinedIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  AddPhotoAlternate as AddPhotoAlternateIcon
 } from '@mui/icons-material';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI, promotionAPI, categoryAPI, settingsAPI, scheduleAPI } from '../services/api';
+import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI, promotionAPI, categoryAPI, settingsAPI, scheduleAPI, galleryAPI } from '../services/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   // ✅ PLACE THE STATE HERE (TOP OF COMPONENT)
   const [openUserDetails, setOpenUserDetails] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -78,6 +82,20 @@ const AdminDashboard = () => {
     isActive: true
   });
   const [selectedCategory, setSelectedCategory] = useState(null);
+
+  // Gallery Management State
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [openGalleryAddDialog, setOpenGalleryAddDialog] = useState(false);
+  const [openGalleryEditDialog, setOpenGalleryEditDialog] = useState(false);
+  const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
+  const [galleryFormData, setGalleryFormData] = useState({
+    title: '',
+    description: '',
+    images: [],
+    categoryId: null
+  });
+  const [galleryErrors, setGalleryErrors] = useState({});
+  const [galleryMessage, setGalleryMessage] = useState('');
 
   // Date Grouping Helper
   const groupAppointmentsByDate = (appointments) => {
@@ -317,6 +335,94 @@ const AdminDashboard = () => {
         alert('Failed to delete category: ' + (error.response?.data?.error || error.message));
       }
     }
+  };
+
+  // Gallery Management Handlers
+  const fetchGalleryItems = async () => {
+    try {
+      const response = await galleryAPI.getGalleryItems();
+      setGalleryItems(response.data.data);
+    } catch (error) {
+      console.error('Error fetching gallery items:', error);
+      setGalleryMessage('Error loading gallery items');
+    }
+  };
+
+  const validateGalleryForm = () => {
+    const newErrors = {};
+    if (!galleryFormData.title.trim()) newErrors.title = 'Title is required';
+    if (!galleryFormData.description.trim()) newErrors.description = 'Description is required';
+    if (galleryFormData.images.length === 0 && !selectedGalleryItem) newErrors.images = 'At least one image is required';
+
+    setGalleryErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleGalleryAddSubmit = async () => {
+    if (!validateGalleryForm()) return;
+
+    try {
+      const response = await galleryAPI.createGalleryItem(galleryFormData);
+      if (response.data.success) {
+        setGalleryMessage(`${response.data.count || 1} gallery item(s) added successfully!`);
+      } else {
+        setGalleryMessage('Gallery item added successfully!');
+      }
+      setOpenGalleryAddDialog(false);
+      setGalleryFormData({ title: '', description: '', images: [], categoryId: null });
+      fetchGalleryItems();
+    } catch (error) {
+      console.error('Error adding gallery item:', error);
+      setGalleryMessage('Error adding gallery item: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleGalleryEditSubmit = async () => {
+    if (!validateGalleryForm() || !selectedGalleryItem) return;
+
+    try {
+      await galleryAPI.updateGalleryItem(selectedGalleryItem.id, galleryFormData);
+      setGalleryMessage('Gallery item updated successfully!');
+      setOpenGalleryEditDialog(false);
+      setSelectedGalleryItem(null);
+      setGalleryFormData({ title: '', description: '', images: [], categoryId: null });
+      fetchGalleryItems();
+    } catch (error) {
+      console.error('Error updating gallery item:', error);
+      setGalleryMessage('Error updating gallery item');
+    }
+  };
+
+  const handleGalleryDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this gallery item?')) {
+      try {
+        await galleryAPI.deleteGalleryItem(id);
+        setGalleryMessage('Gallery item deleted successfully!');
+        fetchGalleryItems();
+      } catch (error) {
+        console.error('Error deleting gallery item:', error);
+        setGalleryMessage('Error deleting gallery item');
+      }
+    }
+  };
+
+  const handleOpenGalleryEdit = (item) => {
+    setSelectedGalleryItem(item);
+    setGalleryFormData({
+      title: item.title,
+      description: item.description,
+      images: [], // Don't set images for editing, user can upload new ones
+      categoryId: item.categoryId || null
+    });
+    setOpenGalleryEditDialog(true);
+  };
+
+  const handleCloseGalleryDialogs = () => {
+    setOpenGalleryAddDialog(false);
+    setOpenGalleryEditDialog(false);
+    setSelectedGalleryItem(null);
+    setGalleryFormData({ title: '', description: '', images: [], categoryId: null });
+    setGalleryErrors({});
   };
 
   const handleOpenNewServiceDialog = () => {
@@ -752,7 +858,8 @@ const AdminDashboard = () => {
           categoriesRes,
           loyaltySettingRes,
           hoursRes,
-          exceptionsRes
+          exceptionsRes,
+          galleryRes
         ] = await Promise.all([
           appointmentAPI.getAppointments(),
           userAPI.getUsers(),
@@ -763,7 +870,8 @@ const AdminDashboard = () => {
           categoryAPI.getCategories(),
           settingsAPI.getSetting('loyaltyPointsEnabled').catch(() => ({ data: { data: { value: 'true' } } })),
           scheduleAPI.getStoreHours().catch(() => ({ data: { data: [] } })),
-          scheduleAPI.getStoreExceptions().catch(() => ({ data: { data: [] } }))
+          scheduleAPI.getStoreExceptions().catch(() => ({ data: { data: [] } })),
+          galleryAPI.getGalleryItems().catch(() => ({ data: { data: [] } }))
         ]);
 
         setAppointments(appointmentsRes.data.data);
@@ -783,6 +891,7 @@ const AdminDashboard = () => {
         setLoyaltyPointsEnabled(loyaltySettingRes.data.data.value === 'true');
         setStoreHours(hoursRes.data.data);
         setStoreExceptions(exceptionsRes.data.data);
+        setGalleryItems(galleryRes.data.data);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -792,6 +901,19 @@ const AdminDashboard = () => {
 
     fetchData();
   }, []);
+
+  // Handle tab switching via query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'gallery') {
+      setActiveTab(16);
+    } else if (tab === 'schedule') {
+      setActiveTab(15);
+    } else if (tab === 'categories') {
+      setActiveTab(6);
+    }
+  }, [location]);
 
   // Filter appointments based on search term, date range, and sorting
   useEffect(() => {
@@ -1020,8 +1142,9 @@ const AdminDashboard = () => {
               textAlign: 'center',
               borderRadius: 3,
               boxShadow: 2,
-              backgroundColor: 'primary.light',
-              color: 'primary.contrastText',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0.05) 100%)',
+              border: '1px solid rgba(99, 102, 241, 0.2)',
+              color: 'primary.light',
               minHeight: 100
             }}
           >
@@ -1038,8 +1161,9 @@ const AdminDashboard = () => {
               textAlign: 'center',
               borderRadius: 3,
               boxShadow: 2,
-              backgroundColor: 'success.light',
-              color: 'success.contrastText',
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.05) 100%)',
+              border: '1px solid rgba(34, 197,  green, 0.2)',
+              color: 'success.light',
               minHeight: 100
             }}
           >
@@ -1056,8 +1180,9 @@ const AdminDashboard = () => {
               textAlign: 'center',
               borderRadius: 3,
               boxShadow: 2,
-              backgroundColor: 'info.light',
-              color: 'info.contrastText',
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.05) 100%)',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
+              color: 'info.light',
               minHeight: 100
             }}
           >
@@ -1074,8 +1199,9 @@ const AdminDashboard = () => {
               textAlign: 'center',
               borderRadius: 3,
               boxShadow: 2,
-              backgroundColor: 'warning.light',
-              color: 'warning.contrastText',
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(234, 179, 8, 0.05) 100%)',
+              border: '1px solid rgba(234, 179, 8, 0.2)',
+              color: 'warning.light',
               minHeight: 100
             }}
           >
@@ -1119,6 +1245,7 @@ const AdminDashboard = () => {
           <Tab label="Theme" />
           <Tab label="Settings" />
           <Tab label="Schedule" />
+          <Tab label="Gallery" />
         </Tabs>
       </Paper>
 
@@ -1133,9 +1260,8 @@ const AdminDashboard = () => {
                 p: 2,
                 mb: 3,
                 borderRadius: 3,
-                backgroundColor: 'grey.50',
-                border: '1px solid',
-                borderColor: 'grey.200'
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid rgba(255, 255, 255, 0.05)'
               }}
             >
               <Grid container spacing={2} alignItems="center">
@@ -1154,7 +1280,7 @@ const AdminDashboard = () => {
                             <SearchIcon color="action" fontSize="small" />
                           </InputAdornment>
                         ),
-                        sx: { borderRadius: 2, backgroundColor: 'white' }
+                        sx: { borderRadius: 2 }
                       }}
                     />
                     <TextField
@@ -1163,7 +1289,7 @@ const AdminDashboard = () => {
                       label="Status"
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      sx={{ minWidth: { sm: 140 }, backgroundColor: 'white' }}
+                      sx={{ minWidth: { sm: 140 } }}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -1193,7 +1319,7 @@ const AdminDashboard = () => {
                       onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
                       InputLabelProps={{ shrink: true }}
                       fullWidth
-                      InputProps={{ sx: { borderRadius: 2, backgroundColor: 'white' } }}
+                      InputProps={{ sx: { borderRadius: 2 } }}
                     />
                     <Typography variant="body2" color="text.secondary">to</Typography>
                     <TextField
@@ -1204,7 +1330,7 @@ const AdminDashboard = () => {
                       onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
                       InputLabelProps={{ shrink: true }}
                       fullWidth
-                      InputProps={{ sx: { borderRadius: 2, backgroundColor: 'white' } }}
+                      InputProps={{ sx: { borderRadius: 2 } }}
                     />
                   </Stack>
                 </Grid>
@@ -1335,8 +1461,12 @@ const AdminDashboard = () => {
                       position: 'sticky',
                       top: 0,
                       zIndex: 1,
-                      py: 1,
-                      backgroundColor: 'white'
+                      py: 1.5,
+                      px: 2,
+                      mx: -2,
+                      background: 'rgba(15, 23, 42, 0.8)',
+                      backdropFilter: 'blur(10px)',
+                      borderRadius: '12px'
                     }}>
                       <Typography
                         variant="h6"
@@ -1392,9 +1522,8 @@ const AdminDashboard = () => {
                                 textAlign: 'center',
                                 p: 1.5,
                                 borderRadius: 2,
-                                backgroundColor: 'grey.50',
-                                border: '1px solid',
-                                borderColor: 'grey.100'
+                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid rgba(255, 255, 255, 0.05)',
                               }}>
                                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', lineHeight: 1 }}>
                                   {appointment.startTime.substring(0, 5)}
@@ -1644,12 +1773,18 @@ const AdminDashboard = () => {
                     <Paper
                       sx={{
                         p: 2,
-                        borderRadius: 2,
+                        borderRadius: 3,
                         display: 'flex',
                         flexDirection: { xs: 'column', sm: 'row' },
                         justifyContent: 'space-between',
                         alignItems: 'flex-start',
-                        gap: 2
+                        gap: 2,
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                        }
                       }}
                     >
                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -1835,14 +1970,22 @@ const AdminDashboard = () => {
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   sx={{
-                                    p: 2,
-                                    borderRadius: 2,
+                                    p: 2.5,
+                                    borderRadius: 3,
                                     display: 'flex',
                                     flexDirection: { xs: 'column', sm: 'row' },
                                     justifyContent: 'space-between',
                                     alignItems: 'flex-start',
                                     gap: 2,
-                                    backgroundColor: '#f9f9f9'
+                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                                      borderColor: 'primary.main',
+                                      transform: 'translateY(-2px)',
+                                      boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+                                    }
                                   }}
                                 >
                                   <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -2124,12 +2267,14 @@ const AdminDashboard = () => {
                     <Paper
                       sx={{
                         p: 2,
-                        borderRadius: 2,
+                        borderRadius: 3,
                         display: 'flex',
                         flexDirection: { xs: 'column', sm: 'row' },
                         justifyContent: 'space-between',
                         alignItems: 'flex-start',
-                        gap: 2
+                        gap: 2,
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
                       }}
                     >
                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -2241,12 +2386,14 @@ const AdminDashboard = () => {
                     <Paper
                       sx={{
                         p: 2,
-                        borderRadius: 2,
+                        borderRadius: 3,
                         display: 'flex',
                         flexDirection: { xs: 'column', sm: 'row' },
                         justifyContent: 'space-between',
                         alignItems: 'flex-start',
-                        gap: 2
+                        gap: 2,
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
                       }}
                     >
                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -2358,12 +2505,14 @@ const AdminDashboard = () => {
                     <Paper
                       sx={{
                         p: 2,
-                        borderRadius: 2,
+                        borderRadius: 3,
                         display: 'flex',
                         flexDirection: { xs: 'column', sm: 'row' },
                         justifyContent: 'space-between',
                         alignItems: 'flex-start',
-                        gap: 2
+                        gap: 2,
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
                       }}
                     >
                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -2458,12 +2607,14 @@ const AdminDashboard = () => {
                   <Grid item xs={12} sm={6} md={4} key={category.id}>
                     <Paper
                       sx={{
-                        p: 2,
-                        borderRadius: 2,
+                        p: 3,
+                        borderRadius: 3,
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
-                        minHeight: 120
+                        minHeight: 140,
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
                       }}
                     >
                       <Box>
@@ -3104,7 +3255,7 @@ const AdminDashboard = () => {
             </Box>
 
             <Box sx={{ mt: 2 }}>
-              <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
+              <Paper sx={{ p: 4, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
                 <Grid container alignItems="center" spacing={2}>
                   <Grid item xs={12} sm={8}>
                     <Typography variant="h6" className="fw-bold">
@@ -3148,9 +3299,167 @@ const AdminDashboard = () => {
       }
 
       {
+        activeTab === 16 && (
+          <Paper sx={{ p: 4, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 4,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h5" className="fw-bold" sx={{ mb: 1 }}>
+                  Gallery Management
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Manage your portfolio and showcase your best work.
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={<AddPhotoAlternateIcon />}
+                onClick={() => setOpenGalleryAddDialog(true)}
+                sx={{
+                  borderRadius: 3,
+                  px: 4,
+                  py: 1.2,
+                  background: 'linear-gradient(45deg, #6366f1, #a855f7)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #4f46e5, #9333ea)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 8px 16px rgba(99, 102, 241, 0.3)'
+                  }
+                }}
+              >
+                Add New Item
+              </Button>
+            </Box>
+
+            {galleryMessage && (
+              <Box sx={{ mb: 3 }}>
+                <Chip
+                  label={galleryMessage}
+                  onDelete={() => setGalleryMessage('')}
+                  color={galleryMessage.includes('Error') ? 'error' : 'success'}
+                  sx={{ borderRadius: 2 }}
+                />
+              </Box>
+            )}
+
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 8 }}>
+                <CircularProgress color="primary" />
+              </Box>
+            ) : galleryItems.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 8, border: '2px dashed rgba(255, 255, 255, 0.1)', borderRadius: 4 }}>
+                <AddPhotoAlternateIcon sx={{ fontSize: 48, color: 'rgba(255, 255, 255, 0.2)', mb: 2 }} />
+                <Typography color="text.secondary">No gallery items yet. Add your first showcase!</Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={3}>
+                {galleryItems.map((item) => (
+                  <Grid item xs={12} sm={6} md={4} key={item.id}>
+                    <Card
+                      sx={{
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        height: '100%',
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-5px)',
+                          boxShadow: '0 12px 24px rgba(0,0,0,0.3)',
+                          borderColor: 'rgba(99, 102, 241, 0.3)'
+                        }
+                      }}
+                    >
+                      <Box sx={{ position: 'relative', height: 220 }}>
+                        <Box
+                          component="img"
+                          src={item.imageUrl}
+                          alt={item.title}
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 10,
+                            right: 10,
+                            display: 'flex',
+                            gap: 1
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenGalleryEdit(item)}
+                            sx={{
+                              backgroundColor: 'rgba(0,0,0,0.5)',
+                              backdropFilter: 'blur(4px)',
+                              color: 'white',
+                              '&:hover': { backgroundColor: 'rgba(99, 102, 241, 0.8)' }
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleGalleryDelete(item.id)}
+                            sx={{
+                              backgroundColor: 'rgba(0,0,0,0.5)',
+                              backdropFilter: 'blur(4px)',
+                              color: 'white',
+                              '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.8)' }
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                      <CardContent sx={{ p: 3 }}>
+                        <Typography variant="h6" className="fw-bold" noWrap sx={{ mb: 1 }}>
+                          {item.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{
+                          mb: 2,
+                          height: 40,
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical'
+                        }}>
+                          {item.description}
+                        </Typography>
+                        <Chip
+                          label={item.category || (categories.find(c => c.id === item.categoryId)?.name) || 'General'}
+                          size="small"
+                          sx={{
+                            borderRadius: 1.5,
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            color: 'primary.light',
+                            fontWeight: 'bold',
+                            fontSize: '0.7rem'
+                          }}
+                        />
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        )
+      }
+      {
         activeTab === 15 && (
           <Box>
-            <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2, mb: 4 }}>
+            <Paper sx={{ p: 4, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', mb: 4 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h5" className="fw-bold">Standard Weekly Hours</Typography>
                 <Button
@@ -3170,7 +3479,7 @@ const AdminDashboard = () => {
                   const hour = storeHours.find(h => h.dayOfWeek === index) || { dayOfWeek: index, openTime: '09:00:00', closeTime: '18:00:00', isOpen: true };
                   return (
                     <Grid item xs={12} key={day}>
-                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Paper sx={{ p: 2, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2, backgroundColor: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.03)' }}>
                         <Box sx={{ width: 120 }}>
                           <Typography className="fw-bold">{day}</Typography>
                         </Box>
@@ -3239,7 +3548,7 @@ const AdminDashboard = () => {
               </Grid>
             </Paper>
 
-            <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2 }}>
+            <Paper sx={{ p: 4, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h5" className="fw-bold">Special Closures & Exceptions</Typography>
                 <Button
@@ -3257,14 +3566,14 @@ const AdminDashboard = () => {
               <Grid container spacing={2}>
                 {storeExceptions.length === 0 ? (
                   <Grid item xs={12}>
-                    <Box sx={{ p: 4, textAlign: 'center', border: '1px dashed grey', borderRadius: 2 }}>
+                    <Box sx={{ p: 4, textAlign: 'center', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: 3 }}>
                       <Typography color="text.secondary">No special exceptions defined yet.</Typography>
                     </Box>
                   </Grid>
                 ) : (
                   storeExceptions.map((ex) => (
                     <Grid item xs={12} sm={6} md={4} key={ex.id}>
-                      <Card sx={{ borderRadius: 2, boxShadow: 1 }}>
+                      <Card sx={{ borderRadius: 3, backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', boxShadow: 'none' }}>
                         <CardContent>
                           <Typography variant="h6" className="fw-bold">{new Date(ex.date).toLocaleDateString()}</Typography>
                           <Chip
@@ -3361,6 +3670,114 @@ const AdminDashboard = () => {
           </Box>
         )
       }
+
+      {/* Gallery Dialogs */}
+      <Dialog open={openGalleryAddDialog} onClose={handleCloseGalleryDialogs} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold' }}>Add New Gallery Item</DialogTitle>
+        <DialogContent dividers>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+            <TextField
+              label="Title"
+              value={galleryFormData.title}
+              onChange={(e) => setGalleryFormData({ ...galleryFormData, title: e.target.value })}
+              error={!!galleryErrors.title}
+              helperText={galleryErrors.title}
+              fullWidth
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+            <TextField
+              label="Description"
+              value={galleryFormData.description}
+              onChange={(e) => setGalleryFormData({ ...galleryFormData, description: e.target.value })}
+              error={!!galleryErrors.description}
+              helperText={galleryErrors.description}
+              multiline
+              rows={3}
+              fullWidth
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+            <Box>
+              <input
+                accept="image/*"
+                id="gallery-add-image-upload"
+                type="file"
+                style={{ display: 'none' }}
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setGalleryFormData({ ...galleryFormData, images: [...galleryFormData.images, ...files] });
+                }}
+              />
+              <label htmlFor="gallery-add-image-upload">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  fullWidth
+                  startIcon={<AddPhotoAlternateIcon />}
+                  sx={{
+                    borderRadius: 2,
+                    py: 1.5,
+                    borderStyle: 'dashed',
+                    borderColor: galleryErrors.images ? '#f44336' : 'rgba(255, 255, 255, 0.1)',
+                    '&:hover': { borderStyle: 'dashed', backgroundColor: 'rgba(255, 255, 255, 0.05)' }
+                  }}
+                >
+                  Upload Showcase Images
+                </Button>
+              </label>
+              {galleryErrors.images && (
+                <Typography color="error" variant="caption" sx={{ ml: 2, mt: 0.5, display: 'block' }}>
+                  {galleryErrors.images}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={handleCloseGalleryDialogs}>Cancel</Button>
+          <Button onClick={handleGalleryAddSubmit} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(45deg, #6366f1, #a855f7)' }}>
+            Add Item
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openGalleryEditDialog} onClose={handleCloseGalleryDialogs} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold' }}>Edit Gallery Item</DialogTitle>
+        <DialogContent dividers>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+            <TextField
+              label="Title"
+              value={galleryFormData.title}
+              onChange={(e) => setGalleryFormData({ ...galleryFormData, title: e.target.value })}
+              error={!!galleryErrors.title}
+              helperText={galleryErrors.title}
+              fullWidth
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+            <TextField
+              label="Description"
+              value={galleryFormData.description}
+              onChange={(e) => setGalleryFormData({ ...galleryFormData, description: e.target.value })}
+              error={!!galleryErrors.description}
+              helperText={galleryErrors.description}
+              multiline
+              rows={3}
+              fullWidth
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={handleCloseGalleryDialogs}>Cancel</Button>
+          <Button onClick={handleGalleryEditSubmit} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(45deg, #6366f1, #a855f7)' }}>
+            Update Item
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container >
   );
 };

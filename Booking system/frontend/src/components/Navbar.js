@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -11,285 +11,235 @@ import {
   Menu,
   MenuItem,
   Avatar,
-  Tooltip,
   Stack,
   Divider,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   useTheme,
-  useMediaQuery
+  ThemeProvider,
+  createTheme
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  CalendarMonth as CalendarIcon,
+  Home as HomeIcon,
   Dashboard as DashboardIcon,
-  AdminPanelSettings as AdminIcon,
-  Analytics as AnalyticsIcon,
   Collections as GalleryIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
-  MiscellaneousServices as ServicesIcon
+  Settings as ServiceIcon,
+  Language as LanguageIcon,
+  Event as EventIcon,
+  AccountCircle
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-import LanguageSwitcher from './LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { t } = useTranslation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
-
-  const [anchorElUser, setAnchorElUser] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleOpenUserMenu = (event) => setAnchorElUser(event.currentTarget);
-  const handleCloseUserMenu = () => setAnchorElUser(null);
-  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+  const handleMenu = (event) => setAnchorEl(event.currentTarget);
+  const handleClose = () => setAnchorEl(null);
 
-  const handleLogout = async () => {
-    handleCloseUserMenu();
-    await logout();
+  const handleLogout = () => {
+    logout();
+    handleClose();
     navigate('/login');
   };
 
-  const navLinks = [
-    { label: t('welcome'), path: '/', icon: <CalendarIcon /> },
-    { label: t('services'), path: '/services', icon: <ServicesIcon /> },
+  const navItems = [
+    { label: t('home'), path: '/', icon: <HomeIcon /> },
+    { label: t('services'), path: '/services', icon: <ServiceIcon /> },
     { label: t('gallery'), path: '/gallery', icon: <GalleryIcon /> },
   ];
 
-  if (user) navLinks.push({ label: t('dashboard'), path: '/dashboard', icon: <DashboardIcon /> });
-
-  const adminLinks = [
-    { label: 'Admin', path: '/admin', icon: <AdminIcon /> },
-    { label: 'Analytics', path: '/analytics', icon: <AnalyticsIcon /> },
-    { label: 'Gallery', path: '/admin/gallery', icon: <GalleryIcon /> },
-  ];
-
-  const drawer = (
-    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center', p: 2 }}>
-      <Typography variant="h6" sx={{ my: 2, fontWeight: 800, color: 'primary.main' }}>
-        BOOKING
-      </Typography>
-      <Divider />
-      <List>
-        {navLinks.map((item) => (
-          <ListItem key={item.path} button onClick={() => navigate(item.path)}>
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItem>
-        ))}
-        {user?.role === 'admin' && adminLinks.map((item) => (
-          <ListItem key={item.path} button onClick={() => navigate(item.path)}>
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItem>
-        ))}
-      </List>
-    </Box>
-  );
-
   return (
-    <>
-      <AppBar
-        position="sticky"
-        elevation={0}
-        sx={{
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid',
-          borderColor: 'grey.100',
-          color: 'text.primary'
-        }}
-      >
-        <Container maxWidth="xl">
-          <Toolbar disableGutters>
+    <AppBar
+      position="sticky"
+      sx={{
+        background: 'rgba(15, 23, 42, 0.4) !important',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: 'none',
+        top: 0,
+        zIndex: 1100,
+        transition: 'all 0.3s ease'
+      }}
+    >
+      <Container maxWidth="xl">
+        <Toolbar disableGutters sx={{ justifyContent: 'space-between', minHeight: '80px !important' }}>
+          {/* Logo Section */}
+          <Box
+            component={Link}
+            to="/"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              textDecoration: 'none',
+              gap: 1.5,
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'scale(1.02)' }
+            }}
+          >
+            <Box sx={{
+              width: 42,
+              height: 42,
+              background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 16px rgba(99, 102, 241, 0.4)'
+            }}>
+              <EventIcon sx={{ color: 'white', fontSize: 24 }} />
+            </Box>
             <Typography
               variant="h6"
               noWrap
-              component={Link}
-              to="/"
               sx={{
-                mr: 4,
-                display: { xs: 'none', md: 'flex' },
                 fontWeight: 900,
-                letterSpacing: '.1rem',
-                color: 'inherit',
-                textDecoration: 'none',
-                alignItems: 'center',
-                gap: 1
+                letterSpacing: '-0.03em',
+                color: 'white',
+                display: { xs: 'none', sm: 'block' },
+                fontSize: '1.4rem'
               }}
             >
-              <CalendarIcon sx={{ color: 'primary.main' }} />
-              BOOKING
+              Elite<span style={{ color: '#818cf8' }}>Book</span>
             </Typography>
+          </Box>
 
-            <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-              <IconButton
-                size="large"
-                aria-label="menu"
-                onClick={handleDrawerToggle}
-                color="inherit"
+          {/* Desktop Navigation */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, background: 'rgba(255,255,255,0.03)', p: 0.5, borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            {navItems.map((item) => (
+              <Button
+                key={item.label}
+                component={Link}
+                to={item.path}
+                startIcon={item.icon}
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  px: 2.5,
+                  py: 1,
+                  borderRadius: '12px',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  fontWeight: 600,
+                  '&:hover': {
+                    color: 'white',
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    transform: 'translateY(-1px)'
+                  }
+                }}
               >
-                <MenuIcon />
-              </IconButton>
-            </Box>
+                {item.label}
+              </Button>
+            ))}
+          </Box>
 
-            <Typography
-              variant="h6"
-              noWrap
-              component={Link}
-              to="/"
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            {/* Language Switcher */}
+            <IconButton
+              onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en')}
               sx={{
-                flexGrow: 1,
-                display: { xs: 'flex', md: 'none' },
-                fontWeight: 900,
-                color: 'inherit',
-                textDecoration: 'none',
+                color: 'rgba(255, 255, 255, 0.6)',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '12px',
+                '&:hover': { background: 'rgba(255,255,255,0.08)', color: 'white' }
               }}
             >
-              BOOKING
-            </Typography>
+              <LanguageIcon />
+            </IconButton>
 
-            <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, gap: 1 }}>
-              {navLinks.map((link) => (
-                <Button
-                  key={link.path}
-                  component={Link}
-                  to={link.path}
+            {user ? (
+              <>
+                <IconButton
+                  onClick={handleMenu}
                   sx={{
-                    my: 2,
-                    color: location.pathname === link.path ? 'primary.main' : 'text.secondary',
-                    display: 'block',
-                    fontWeight: location.pathname === link.path ? 'bold' : 'medium',
-                    textTransform: 'none',
-                    fontSize: '0.95rem',
-                    '&:hover': { color: 'primary.main', backgroundColor: 'transparent' }
+                    p: 0.5,
+                    border: '1.5px solid rgba(129, 140, 248, 0.3)',
+                    borderRadius: '14px',
+                    transition: 'all 0.2s',
+                    '&:hover': { borderColor: '#818cf8', transform: 'translateY(-1px)' }
                   }}
                 >
-                  {link.label}
-                </Button>
-              ))}
-              {user?.role === 'admin' && adminLinks.map((link) => (
-                <Button
-                  key={link.path}
-                  component={Link}
-                  to={link.path}
-                  sx={{
-                    my: 2,
-                    color: location.pathname === link.path ? 'primary.main' : 'text.secondary',
-                    display: 'block',
-                    fontWeight: location.pathname === link.path ? 'bold' : 'medium',
-                    textTransform: 'none',
-                    fontSize: '0.95rem',
-                    '&:hover': { color: 'primary.main', backgroundColor: 'transparent' }
+                  <Avatar
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      background: 'linear-gradient(135deg, #4f46e5 0%, #7e22ce 100%)',
+                      fontSize: '0.9rem',
+                      fontWeight: 700
+                    }}
+                  >
+                    {user.firstName?.charAt(0)}
+                  </Avatar>
+                </IconButton>
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleClose}
+                  disableScrollLock
+                  PaperProps={{
+                    sx: {
+                      mt: 2,
+                      minWidth: 220,
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      backdropFilter: 'blur(20px)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+                      borderRadius: '20px',
+                      p: 1,
+                      '& .MuiMenuItem-root': {
+                        px: 2, py: 1.5, borderRadius: '12px', transition: 'all 0.2s', mb: 0.5,
+                        '&:hover': { background: 'rgba(255, 255, 255, 0.08)' }
+                      }
+                    }
                   }}
                 >
-                  {link.label}
-                </Button>
-              ))}
-            </Box>
-
-            <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <LanguageSwitcher />
-
-              {user ? (
-                <Box>
-                  <Tooltip title="Open settings">
-                    <IconButton onClick={handleOpenUserMenu} sx={{ p: 0.5, border: '2px solid', borderColor: 'primary.light' }}>
-                      <Avatar
-                        alt={`${user.firstName} ${user.lastName}`}
-                        sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '1rem' }}
-                      >
-                        {user.firstName[0]}
-                      </Avatar>
-                    </IconButton>
-                  </Tooltip>
-                  <Menu
-                    sx={{ mt: '45px' }}
-                    id="menu-appbar"
-                    anchorEl={anchorElUser}
-                    anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                    keepMounted
-                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                    open={Boolean(anchorElUser)}
-                    onClose={handleCloseUserMenu}
-                    PaperProps={{
-                      elevation: 4,
-                      sx: { borderRadius: '12px', minWidth: '180px', mt: 1 }
-                    }}
-                  >
-                    <Box sx={{ px: 2, py: 1.5 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                        {user.firstName} {user.lastName}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {user.role}
-                      </Typography>
-                    </Box>
-                    <Divider />
-                    <MenuItem onClick={() => { handleCloseUserMenu(); navigate('/profile'); }}>
-                      <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
-                      <ListItemText primary={t('profile')} />
+                  <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>
+                    <AccountCircle sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> {t('profile')}
+                  </MenuItem>
+                  {user.role === 'admin' && (
+                    <>
+                      <MenuItem onClick={() => { handleClose(); navigate('/admin'); }}>
+                        <DashboardIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Admin Dashboard
+                      </MenuItem>
+                      <MenuItem onClick={() => { handleClose(); navigate('/admin?tab=gallery'); }}>
+                        <GalleryIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Gallery Management
+                      </MenuItem>
+                    </>
+                  )}
+                  {user.role === 'staff' && (
+                    <MenuItem onClick={() => { handleClose(); navigate('/staff'); }}>
+                      <DashboardIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Staff Dashboard
                     </MenuItem>
-                    <MenuItem onClick={handleLogout}>
-                      <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>
-                      <ListItemText primary={t('logout')} sx={{ color: 'error.main' }} />
-                    </MenuItem>
-                  </Menu>
-                </Box>
-              ) : (
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    component={Link}
-                    to="/login"
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 'bold',
-                      color: 'text.primary'
-                    }}
-                  >
-                    {t('login')}
-                  </Button>
-                  <Button
-                    component={Link}
-                    to="/register"
-                    variant="contained"
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 'bold',
-                      borderRadius: '10px',
-                      boxShadow: 'none'
-                    }}
-                  >
-                    {t('register')}
-                  </Button>
-                </Stack>
-              )}
-            </Box>
-          </Toolbar>
-        </Container>
-      </AppBar>
-
-      <Drawer
-        variant="temporary"
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        ModalProps={{ keepMounted: true }}
-        sx={{
-          display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
-        }}
-      >
-        {drawer}
-      </Drawer>
-    </>
+                  )}
+                  <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
+                  <MenuItem onClick={handleLogout} sx={{ color: '#fb7185' }}>
+                    <LogoutIcon sx={{ mr: 2 }} /> {t('logout')}
+                  </MenuItem>
+                </Menu>
+              </>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={() => navigate('/login')}
+                sx={{
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  px: 4,
+                  py: 1.2,
+                  fontSize: '0.95rem'
+                }}
+              >
+                Get Started
+              </Button>
+            )}
+          </Stack>
+        </Toolbar>
+      </Container>
+    </AppBar>
   );
 };
 
