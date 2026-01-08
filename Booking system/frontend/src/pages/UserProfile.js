@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../services/api';
+import { authAPI, settingsAPI } from '../services/api';
 import {
   Container,
   Typography,
@@ -32,6 +32,7 @@ const UserProfile = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -43,6 +44,16 @@ const UserProfile = () => {
         address: user.address || ''
       });
     }
+
+    const fetchSettings = async () => {
+      try {
+        const res = await settingsAPI.getSetting('loyaltyPointsEnabled').catch(() => ({ data: { data: { value: 'true' } } }));
+        setLoyaltyEnabled(res.data.data.value === 'true');
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+      }
+    };
+    fetchSettings();
   }, [user]);
 
   const handleInputChange = (e) => {
@@ -142,15 +153,17 @@ const UserProfile = () => {
                 </Alert>
               )}
 
-              <Paper elevation={3} sx={{ p: 2, mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                <Typography variant="h6">Loyalty Program</Typography>
-                <Typography variant="h4" fontWeight="bold">
-                  {user?.loyaltyPoints || 0} pts
-                </Typography>
-                <Typography variant="body2">
-                  Earn points with every booking and redeem them for discounts!
-                </Typography>
-              </Paper>
+              {loyaltyEnabled && (
+                <Paper elevation={3} sx={{ p: 2, mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                  <Typography variant="h6">Loyalty Program</Typography>
+                  <Typography variant="h4" fontWeight="bold">
+                    {user?.loyaltyPoints || 0} pts
+                  </Typography>
+                  <Typography variant="body2">
+                    Earn points with every booking and redeem them for discounts!
+                  </Typography>
+                </Paper>
+              )}
 
               <Box component="form" onSubmit={handleUpdateProfile}>
                 <TextField

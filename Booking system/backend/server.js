@@ -12,7 +12,19 @@ const { scheduleAppointmentReminders } = require('./utils/appointmentReminders')
 const swaggerSpecs = require('./utils/swagger');
 
 // Connect to database
+const db = require('./models');
 connectDB();
+
+// Sync models from the models folder
+if (process.env.NODE_ENV !== 'production') {
+  db.sequelize.sync({ alter: true })
+    .then(() => {
+      console.log('Models synchronized with database');
+    })
+    .catch(err => {
+      console.error('Error synchronizing models:', err);
+    });
+}
 
 const app = express();
 
@@ -65,6 +77,8 @@ app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 app.use('/api/waiting-list', require('./routes/waitingList'));
 app.use('/api/theme', require('./routes/theme'));
+app.use('/api/settings', require('./routes/settings'));
+app.use('/api/schedule', require('./routes/schedule'));
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));

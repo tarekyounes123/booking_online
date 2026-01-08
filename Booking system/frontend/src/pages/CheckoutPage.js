@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { appointmentAPI, paymentAPI, promotionAPI } from '../services/api';
+import { appointmentAPI, paymentAPI, promotionAPI, settingsAPI } from '../services/api';
 
 import { Container, Typography, Paper, Box, TextField, Button, Alert, CircularProgress, MenuItem } from '@mui/material';
 
@@ -15,23 +15,29 @@ const CheckoutPage = () => {
   const [currency, setCurrency] = useState('usd'); // Default currency
   const [promotionApplied, setPromotionApplied] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(true);
 
   useEffect(() => {
-    const fetchAppointment = async () => {
+    const fetchData = async () => {
       try {
-        const res = await appointmentAPI.getAppointment(appointmentId);
-        setAppointment(res.data.data);
+        const [appRes, loyaltyRes] = await Promise.all([
+          appointmentAPI.getAppointment(appointmentId),
+          settingsAPI.getSetting('loyaltyPointsEnabled').catch(() => ({ data: { data: { value: 'true' } } }))
+        ]);
+
+        setAppointment(appRes.data.data);
+        setLoyaltyEnabled(loyaltyRes.data.data.value === 'true');
 
         // Use the stored discounted price if available, otherwise use service price
-        const price = res.data.data.discountedPrice || res.data.data.Service.price;
+        const price = appRes.data.data.discountedPrice || appRes.data.data.Service.price;
         setFinalAmount(parseFloat(price));
       } catch (err) {
-        setError('Failed to fetch appointment details.');
+        setError('Failed to fetch checkout details.');
       } finally {
         setLoading(false);
       }
     };
-    fetchAppointment();
+    fetchData();
   }, [appointmentId]);
 
   const handleApplyPromo = async () => {
@@ -109,7 +115,7 @@ const CheckoutPage = () => {
               <Button onClick={handleApplyPromo}>Apply</Button>
             </Box>
 
-            {!promotionApplied && (
+            {loyaltyEnabled && !promotionApplied && (
               <Box sx={{ mt: 3, p: 2, border: '1px dashed grey', borderRadius: 2 }}>
                 <Typography variant="h6">Redeem Loyalty Points</Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>

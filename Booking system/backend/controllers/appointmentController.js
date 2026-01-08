@@ -7,6 +7,8 @@ const asyncHandler = require('../middleware/async');
 const sendEmail = require('../utils/sendEmail');
 const { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } = require('../utils/calendarIntegration');
 const webhookService = require('../utils/webhookService');
+const { isStoreOpen, getStoreSchedule } = require('../utils/scheduleHelper');
+const { checkLoyaltyPointsEnabled } = require('../utils/loyaltyHelper');
 
 /**
  * @swagger
@@ -269,6 +271,14 @@ exports.getAppointment = asyncHandler(async (req, res, next) => {
 exports.createAppointment = asyncHandler(async (req, res, next) => {
   // Sanitize and validate inputs
   const { serviceId, date, startTime, endTime, notes, location, staffId, paymentMethod } = req.body;
+
+  // Validate store hours (skip for admins)
+  if (req.user.role !== 'admin') {
+    const storeStatus = await isStoreOpen(date, startTime);
+    if (!storeStatus.isOpen) {
+      return next(new ErrorResponse(storeStatus.reason || 'The store is closed at the requested time.', 400));
+    }
+  }
 
   // Get the service to get its price
   const service = await Service.findByPk(parseInt(serviceId));
@@ -596,6 +606,15 @@ exports.updateAppointment = asyncHandler(async (req, res, next) => {
 
       // Only validate if both values exist and are not null
       if (finalStartTime && finalEndTime) {
+        // Validate store hours (skip for admins)
+        if (req.user.role !== 'admin') {
+          const checkDate = updateData.date || appointment.date;
+          const storeStatus = await isStoreOpen(checkDate, finalStartTime);
+          if (!storeStatus.isOpen) {
+            return next(new ErrorResponse(storeStatus.reason || 'The store is closed at the requested time.', 400));
+          }
+        }
+
         // Validate that end time is after start time
         // Parse time strings to extract hours and minutes
         const parseTime = (timeStr) => {
@@ -832,18 +851,12 @@ exports.updateAppointment = asyncHandler(async (req, res, next) => {
 
               // 2. Award Points if not already awarded
               if (!payment.pointsAwarded) {
-                const pointsEarned = Math.floor(payment.amount);
-                console.log(`[DEBUG] Points to earn: ${pointsEarned}`);
-
+                const user = await User.findByPk(updatedAppointment.userId);
+                const pointsEarned = await awardLoyaltyPoints(user, payment.amount, t);
                 if (pointsEarned > 0) {
-                  const user = await User.findByPk(updatedAppointment.userId);
-                  if (user) {
-                    await user.increment('loyaltyPoints', { by: pointsEarned, transaction: t });
-                    console.log(`[DEBUG] Awarded ${pointsEarned} points to user ${user.id} (${user.email})`);
-                  }
+                  // Mark points as awarded
+                  await payment.update({ pointsAwarded: true }, { transaction: t });
                 }
-                // Mark points as awarded
-                await payment.update({ pointsAwarded: true }, { transaction: t });
               }
 
               await t.commit();
@@ -997,19 +1010,12 @@ exports.updateAppointmentStatus = asyncHandler(async (req, res, next) => {
 
             // 2. Award Points if not already awarded
             if (!payment.pointsAwarded) {
-              // Use the final amount paid (discounted price) for points
-              const pointsEarned = Math.floor(payment.amount);
-              console.log(`[DEBUG] Points to earn from amount ${payment.amount}: ${pointsEarned}`);
-
+              const user = await User.findByPk(appointment.userId);
+              const pointsEarned = await awardLoyaltyPoints(user, payment.amount, t);
               if (pointsEarned > 0) {
-                const user = await User.findByPk(appointment.userId);
-                if (user) {
-                  await user.increment('loyaltyPoints', { by: pointsEarned, transaction: t });
-                  console.log(`[DEBUG] Awarded ${pointsEarned} points to user ${user.id} (${user.email})`);
-                }
+                // Mark points as awarded
+                await payment.update({ pointsAwarded: true }, { transaction: t });
               }
-              // Mark points as awarded
-              await payment.update({ pointsAwarded: true }, { transaction: t });
             }
 
             await t.commit();
@@ -1132,6 +1138,9 @@ exports.deleteAppointment = asyncHandler(async (req, res, next) => {
 // @desc      Get available time slots for a service and staff
 // @route     GET /api/appointments/available-slots
 // @access    Private
+// @desc      Get available time slots for a service/staff/date
+// @route     GET /api/appointments/slots
+// @access    Private
 exports.getAvailableSlots = asyncHandler(async (req, res, next) => {
   const { serviceId, staffId, date } = req.query;
 
@@ -1156,9 +1165,24 @@ exports.getAvailableSlots = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Define default business hours (fallback)
-  let businessStartMinutes = 9 * 60; // 9 AM
-  let businessEndMinutes = 18 * 60; // 6 PM
+  // Get store schedule for this date
+  const storeSchedule = await getStoreSchedule(date);
+  if (!storeSchedule.isOpen) {
+    return res.status(200).json({
+      success: true,
+      date,
+      serviceId: parseInt(serviceId),
+      availableSlots: [],
+      message: storeSchedule.reason || 'Store is closed on this date'
+    });
+  }
+
+  // Define business hours from store schedule
+  const [sH, sM] = storeSchedule.openTime.split(':').map(Number);
+  const [eH, eM] = storeSchedule.closeTime.split(':').map(Number);
+
+  let businessStartMinutes = sH * 60 + sM;
+  let businessEndMinutes = eH * 60 + eM;
   const slotDuration = 30; // 30 minutes per slot
 
   // Check for Staff Schedule if staffId is provided

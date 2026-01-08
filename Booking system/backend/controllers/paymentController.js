@@ -2,6 +2,7 @@ const { Payment, Appointment, User, Promotion, Service } = require('../models');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const webhookService = require('../utils/webhookService');
+const { checkLoyaltyPointsEnabled } = require('../utils/loyaltyHelper');
 
 // @desc      Apply promotion code to appointment
 // @route     POST /api/payments/apply-promotion
@@ -189,15 +190,11 @@ exports.createPayment = asyncHandler(async (req, res, next) => {
     }
 
     // 4. ADD POINTS LOYALTY Logic - ONLY IF COMPLETED
-    // E.g., 1 point for every $1 spent
     if (payment.status === 'completed') {
-      const pointsEarned = Math.floor(finalAmount);
+      const user = await User.findByPk(req.user.id);
+      const pointsEarned = await awardLoyaltyPoints(user, finalAmount, t);
       if (pointsEarned > 0) {
-        const user = await User.findByPk(req.user.id);
-        if (user) {
-          await user.increment('loyaltyPoints', { by: pointsEarned, transaction: t });
-          await payment.update({ pointsAwarded: true }, { transaction: t });
-        }
+        await payment.update({ pointsAwarded: true }, { transaction: t });
       }
     }
 
@@ -385,14 +382,10 @@ exports.updatePayment = asyncHandler(async (req, res, next) => {
 
     // Check if status changed to 'completed' OR if it is completed but points weren't awarded yet
     if (payment.status === 'completed' && !payment.pointsAwarded) {
-      // Award loyalty points now
-      const pointsEarned = Math.floor(payment.amount);
+      const user = await User.findByPk(payment.userId);
+      const pointsEarned = await awardLoyaltyPoints(user, payment.amount, t);
       if (pointsEarned > 0) {
-        const user = await User.findByPk(payment.userId);
-        if (user) {
-          await user.increment('loyaltyPoints', { by: pointsEarned, transaction: t });
-          await payment.update({ pointsAwarded: true }, { transaction: t });
-        }
+        await payment.update({ pointsAwarded: true }, { transaction: t });
       }
     }
 

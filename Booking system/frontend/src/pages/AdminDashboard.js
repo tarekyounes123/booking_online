@@ -1,8 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Typography, Grid, Paper, Button, Card, CardContent, CardActions, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Box, Chip, FormControlLabel, Switch } from '@mui/material';
+import {
+  Container, Typography, Grid, Paper, Button, Card, CardContent, CardActions,
+  Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  FormControl, InputLabel, Select, MenuItem, Box, Chip, FormControlLabel,
+  Switch, InputAdornment, IconButton, Tooltip, Stack, CircularProgress
+} from '@mui/material';
+import {
+  Search as SearchIcon,
+  FilterList as FilterListIcon,
+  CalendarToday as CalendarTodayIcon,
+  Clear as ClearIcon,
+  Today as TodayIcon,
+  FilterAlt as FilterAltIcon,
+  AccessTime as AccessTimeIcon,
+  Person as PersonIcon,
+  Phone as PhoneIcon,
+  WhatsApp as WhatsAppIcon,
+  Info as InfoOutlinedIcon
+} from '@mui/icons-material';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI, promotionAPI, categoryAPI } from '../services/api';
+import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI, promotionAPI, categoryAPI, settingsAPI, scheduleAPI } from '../services/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -61,8 +79,53 @@ const AdminDashboard = () => {
   });
   const [selectedCategory, setSelectedCategory] = useState(null);
 
+  // Date Grouping Helper
+  const groupAppointmentsByDate = (appointments) => {
+    const groups = {};
+    appointments.forEach(appointment => {
+      const dateStr = appointment.date.split('T')[0];
+      if (!groups[dateStr]) groups[dateStr] = [];
+      groups[dateStr].push(appointment);
+    });
+    return Object.keys(groups).sort().reduce((acc, date) => {
+      acc[date] = groups[date].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      return acc;
+    }, {});
+  };
+
+  const formatDateHeader = (dateStr) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const checkDate = new Date(dateStr);
+    checkDate.setHours(0, 0, 0, 0);
+
+    if (checkDate.getTime() === today.getTime()) return "Today";
+    if (checkDate.getTime() === tomorrow.getTime()) return "Tomorrow";
+
+    return date.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed': return '#2e7d32';
+      case 'pending': return '#ed6c02';
+      case 'confirmed': return '#0288d1';
+      case 'cancelled': return '#d32f2f';
+      default: return '#757575';
+    }
+  };
+
   // Additional state for advanced features
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
@@ -493,7 +556,7 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error("Failed to update user:", error);
       const errorMessage = error.response?.data?.message || error.message || "Failed to update user in database";
-      alert(`Failed to update user: ${errorMessage}`);
+      alert(`Failed to update user: ${errorMessage} `);
     }
   };
 
@@ -559,6 +622,25 @@ const AdminDashboard = () => {
     }
   };
 
+  // Loyalty Points Toggle Handler
+  const handleToggleLoyaltyPoints = async (event) => {
+    const newValue = event.target.checked;
+    setLoyaltyLoading(true);
+
+    try {
+      await settingsAPI.updateSetting('loyaltyPointsEnabled', { value: String(newValue) });
+      setLoyaltyPointsEnabled(newValue);
+      alert(`Loyalty points system ${newValue ? 'enabled' : 'disabled'} successfully!`);
+    } catch (error) {
+      console.error('Error updating loyalty points setting:', error);
+      alert('Failed to update loyalty points setting');
+      // Revert the toggle if the update failed
+      setLoyaltyPointsEnabled(!newValue);
+    } finally {
+      setLoyaltyLoading(false);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState(0);
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
@@ -575,34 +657,132 @@ const AdminDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [filteredCategories, setFilteredCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loyaltyPointsEnabled, setLoyaltyPointsEnabled] = useState(true);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
+  // Store Hours and Exceptions States
+  const [storeHours, setStoreHours] = useState([]);
+  const [storeExceptions, setStoreExceptions] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [exceptionDialogOpen, setExceptionDialogOpen] = useState(false);
+  const [editingException, setEditingException] = useState(null);
+  const [newException, setNewException] = useState({
+    date: '',
+    openTime: '09:00',
+    closeTime: '18:00',
+    isOpen: false,
+    reason: ''
+  });
+
+  const handleSaveStoreHours = async () => {
+    setScheduleLoading(true);
+    try {
+      // Ensure we have all 7 days, even if some use defaults
+      const currentHours = [...storeHours];
+      for (let i = 0; i < 7; i++) {
+        if (!currentHours.find(h => h.dayOfWeek === i)) {
+          currentHours.push({ dayOfWeek: i, openTime: '09:00:00', closeTime: '18:00:00', isOpen: true });
+        }
+      }
+
+      const res = await scheduleAPI.updateStoreHours(currentHours);
+      setStoreHours(res.data.data);
+      alert('Store hours updated successfully!');
+    } catch (error) {
+      console.error('Failed to save store hours:', error);
+      alert('Failed to save store hours. Please check console for details.');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const handleToggleDay = (index) => {
+    const updated = [...storeHours];
+    updated[index].isOpen = !updated[index].isOpen;
+    setStoreHours(updated);
+  };
+
+  const handleTimeChange = (index, field, value) => {
+    const updated = [...storeHours];
+    updated[index][field] = value;
+    setStoreHours(updated);
+  };
+
+  const handleAddException = async () => {
+    setScheduleLoading(true);
+    try {
+      const res = await scheduleAPI.createStoreException(newException);
+      setStoreExceptions([...storeExceptions, res.data.data].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      setExceptionDialogOpen(false);
+      setNewException({ date: '', openTime: '09:00', closeTime: '18:00', isOpen: false, reason: '' });
+      alert('Exception added successfully!');
+    } catch (error) {
+      console.error('Failed to add exception:', error);
+      alert('Failed to add exception.');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const handleDeleteException = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this exception?')) return;
+    setScheduleLoading(true);
+    try {
+      await scheduleAPI.deleteStoreException(id);
+      setStoreExceptions(storeExceptions.filter(ex => ex.id !== id));
+      alert('Exception deleted successfully!');
+    } catch (error) {
+      console.error('Failed to delete exception:', error);
+      alert('Failed to delete exception.');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [appointmentsRes, usersRes, servicesRes, staffRes, paymentsRes, promotionsRes, categoriesRes] = await Promise.all([
+        const [
+          appointmentsRes,
+          usersRes,
+          servicesRes,
+          staffRes,
+          paymentsRes,
+          promotionsRes,
+          categoriesRes,
+          loyaltySettingRes,
+          hoursRes,
+          exceptionsRes
+        ] = await Promise.all([
           appointmentAPI.getAppointments(),
           userAPI.getUsers(),
           serviceAPI.getServices(),
           staffAPI.getStaff(),
           paymentAPI.getPayments(),
           promotionAPI.getPromotions(),
-          categoryAPI.getCategories()
+          categoryAPI.getCategories(),
+          settingsAPI.getSetting('loyaltyPointsEnabled').catch(() => ({ data: { data: { value: 'true' } } })),
+          scheduleAPI.getStoreHours().catch(() => ({ data: { data: [] } })),
+          scheduleAPI.getStoreExceptions().catch(() => ({ data: { data: [] } }))
         ]);
 
         setAppointments(appointmentsRes.data.data);
-        setFilteredAppointments(appointmentsRes.data.data); // Initially set to all appointments
+        setFilteredAppointments(appointmentsRes.data.data);
         setUsers(usersRes.data.data);
-        setFilteredUsers(usersRes.data.data); // Initially set to all users
+        setFilteredUsers(usersRes.data.data);
         setServices(servicesRes.data.data);
-        setFilteredServices(servicesRes.data.data); // Initially set to all services
+        setFilteredServices(servicesRes.data.data);
         setStaff(staffRes.data.data);
-        setFilteredStaff(staffRes.data.data); // Initially set to all staff
+        setFilteredStaff(staffRes.data.data);
         setPayments(paymentsRes.data.data);
-        setFilteredPayments(paymentsRes.data.data); // Initially set to all payments
+        setFilteredPayments(paymentsRes.data.data);
         setPromotions(promotionsRes.data.data);
-        setFilteredPromotions(promotionsRes.data.data); // Initially set to all promotions
+        setFilteredPromotions(promotionsRes.data.data);
         setCategories(categoriesRes.data.data);
-        setFilteredCategories(categoriesRes.data.data); // Initially set to all categories
+        setFilteredCategories(categoriesRes.data.data);
+        setLoyaltyPointsEnabled(loyaltySettingRes.data.data.value === 'true');
+        setStoreHours(hoursRes.data.data);
+        setStoreExceptions(exceptionsRes.data.data);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -619,6 +799,13 @@ const AdminDashboard = () => {
 
     let filtered = [...appointments];
 
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(appointment =>
+        appointment.status === statusFilter
+      );
+    }
+
     // Apply search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -631,20 +818,19 @@ const AdminDashboard = () => {
       );
     }
 
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
     // Apply date range filter
     if (dateRange.start) {
-      filtered = filtered.filter(appointment =>
-        appointment.date >= dateRange.start
-      );
+      filtered = filtered.filter(appointment => {
+        const appointmentDate = appointment.date.split('T')[0];
+        return appointmentDate >= dateRange.start;
+      });
     }
 
     if (dateRange.end) {
-      filtered = filtered.filter(appointment =>
-        appointment.date <= dateRange.end
-      );
+      filtered = filtered.filter(appointment => {
+        const appointmentDate = appointment.date.split('T')[0];
+        return appointmentDate <= dateRange.end;
+      });
     }
 
     // Apply sorting
@@ -677,7 +863,7 @@ const AdminDashboard = () => {
     });
 
     setFilteredAppointments(filtered);
-  }, [appointments, searchTerm, dateRange, sortConfig]);
+  }, [appointments, searchTerm, dateRange, sortConfig, statusFilter]);
 
   // Filter services based on search term
   useEffect(() => {
@@ -800,7 +986,7 @@ const AdminDashboard = () => {
   };
 
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayStr = `${now.getFullYear()} -${String(now.getMonth() + 1).padStart(2, '0')} -${String(now.getDate()).padStart(2, '0')} `;
 
   const pendingAppointments = appointments.filter(appt => appt.status === 'pending');
   const todayAppointments = appointments.filter(appt =>
@@ -931,171 +1117,369 @@ const AdminDashboard = () => {
           <Tab label="Webhooks" />
           <Tab label="API Docs" />
           <Tab label="Theme" />
+          <Tab label="Settings" />
+          <Tab label="Schedule" />
         </Tabs>
       </Paper>
 
       {/* Tab Content */}
       {activeTab === 0 && (
         <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Appointments
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, alignItems: 'center' }}>
-                <TextField
-                  label="Search Appointments"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  fullWidth
-                  size="small"
-                  sx={{ maxWidth: { xs: '100%', sm: 250 } }}
-                />
-                <TextField
-                  label="From Date"
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ maxWidth: { xs: '100%', sm: 150 } }}
-                />
-                <TextField
-                  label="To Date"
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ maxWidth: { xs: '100%', sm: 150 } }}
-                />
-                <TextField
-                  select
-                  label="Sort By"
-                  value={`${sortConfig.key}-${sortConfig.direction}`}
-                  onChange={(e) => {
-                    const [key, direction] = e.target.value.split('-');
-                    setSortConfig({ key, direction });
-                  }}
-                  size="small"
-                  sx={{ maxWidth: { xs: '100%', sm: 150 } }}
-                >
-                  <MenuItem value="createdAt-desc">Newest First</MenuItem>
-                  <MenuItem value="createdAt-asc">Oldest First</MenuItem>
-                  <MenuItem value="date-asc">Date Ascending</MenuItem>
-                  <MenuItem value="date-desc">Date Descending</MenuItem>
-                  <MenuItem value="status-asc">Status A-Z</MenuItem>
-                </TextField>
-              </Box>
-            </Box>
-            <Button
-              variant="contained"
-              onClick={() => navigate('/appointments/new')}
+          <Box>
+            {/* Enhanced Filter Section */}
+            <Paper
+              elevation={0}
               sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
+                p: 2,
+                mb: 3,
+                borderRadius: 3,
+                backgroundColor: 'grey.50',
+                border: '1px solid',
+                borderColor: 'grey.200'
               }}
             >
-              Add New Appointment
-            </Button>
-          </Box>
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {filteredAppointments.map((appointment) => (
-                <Grid item xs={12} key={appointment.id}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 2
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                        {appointment.Service?.name}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
-                        Customer: {appointment.User?.firstName} {appointment.User?.lastName}<br />
-                        Phone: {appointment.User?.phone || 'N/A'}<br />
-                        Date: {new Date(appointment.date).toLocaleDateString()}<br />
-                        Time: {appointment.startTime} - {appointment.endTime}<br />
-                        Status: <Chip
-                          label={appointment.status}
-                          color={
-                            appointment.status === 'completed' ? 'success' :
-                              appointment.status === 'pending' ? 'warning' :
-                                appointment.status === 'canceled' ? 'error' : 'default'
-                          }
+              <Grid container spacing={2} alignItems="center">
+                {/* Search & Status Group */}
+                <Grid item xs={12} md={5}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Search by name, email, service..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon color="action" fontSize="small" />
+                          </InputAdornment>
+                        ),
+                        sx: { borderRadius: 2, backgroundColor: 'white' }
+                      }}
+                    />
+                    <TextField
+                      select
+                      size="small"
+                      label="Status"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      sx={{ minWidth: { sm: 140 }, backgroundColor: 'white' }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <FilterListIcon fontSize="small" />
+                          </InputAdornment>
+                        ),
+                        sx: { borderRadius: 2 }
+                      }}
+                    >
+                      <MenuItem value="all">All Status</MenuItem>
+                      <MenuItem value="pending">Pending</MenuItem>
+                      <MenuItem value="confirmed">Confirmed</MenuItem>
+                      <MenuItem value="completed">Completed</MenuItem>
+                      <MenuItem value="cancelled">Cancelled</MenuItem>
+                    </TextField>
+                  </Stack>
+                </Grid>
+
+                {/* Date Filter Group */}
+                <Grid item xs={12} md={5}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
+                    <TextField
+                      type="date"
+                      label="From"
+                      size="small"
+                      value={dateRange.start}
+                      onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                      InputProps={{ sx: { borderRadius: 2, backgroundColor: 'white' } }}
+                    />
+                    <Typography variant="body2" color="text.secondary">to</Typography>
+                    <TextField
+                      type="date"
+                      label="To"
+                      size="small"
+                      value={dateRange.end}
+                      onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                      InputProps={{ sx: { borderRadius: 2, backgroundColor: 'white' } }}
+                    />
+                  </Stack>
+                </Grid>
+
+                {/* Quick Actions Group */}
+                <Grid item xs={12} md={2}>
+                  <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
+                    <Tooltip title="Filter Today">
+                      <Button
+                        variant={dateRange.start === new Date().toISOString().split('T')[0] && dateRange.end === new Date().toISOString().split('T')[0] ? "contained" : "outlined"}
+                        size="small"
+                        onClick={() => {
+                          const today = new Date().toISOString().split('T')[0];
+                          setDateRange({ start: today, end: today });
+                        }}
+                        startIcon={<TodayIcon />}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                      >
+                        Today
+                      </Button>
+                    </Tooltip>
+                    {(dateRange.start || dateRange.end || statusFilter !== 'all' || searchTerm) && (
+                      <Tooltip title="Clear All Filters">
+                        <IconButton
                           size="small"
-                          sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
-                        />
-                      </Typography>
-                    </Box>
+                          onClick={() => {
+                            setDateRange({ start: '', end: '' });
+                            setStatusFilter('all');
+                            setSearchTerm('');
+                          }}
+                          color="error"
+                          sx={{ border: '1px solid', borderColor: 'error.light' }}
+                        >
+                          <ClearIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Stack>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2
+            }}>
+              <Typography variant="subtitle1" className="fw-bold" color="text.secondary">
+                Showing {filteredAppointments.length} Appointments
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => navigate('/appointments/new')}
+                sx={{ borderRadius: 2, fontWeight: 'bold' }}
+              >
+                + New Appointment
+              </Button>
+            </Box>
+
+            {/* Sort Section */}
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+              <TextField
+                select
+                label="Sort By"
+                size="small"
+                value={`${sortConfig.key}-${sortConfig.direction}`}
+                onChange={(e) => {
+                  const [key, direction] = e.target.value.split('-');
+                  setSortConfig({ key, direction });
+                }}
+                sx={{ minWidth: 160 }}
+                InputProps={{ sx: { borderRadius: 2 } }}
+              >
+                <MenuItem value="createdAt-desc">Newest First</MenuItem>
+                <MenuItem value="createdAt-asc">Oldest First</MenuItem>
+                <MenuItem value="date-asc">Date Ascending</MenuItem>
+                <MenuItem value="date-desc">Date Descending</MenuItem>
+                <MenuItem value="status-asc">Status A-Z</MenuItem>
+              </TextField>
+            </Box>
+
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 8 }}>
+                <CircularProgress size={60} thickness={4} />
+                <Typography sx={{ mt: 2, color: 'text.secondary', fontWeight: 'medium' }}>
+                  Fetching your schedule...
+                </Typography>
+              </Box>
+            ) : filteredAppointments.length === 0 ? (
+              <Paper
+                sx={{
+                  p: 8,
+                  textAlign: 'center',
+                  borderRadius: 4,
+                  backgroundColor: 'grey.50',
+                  border: '2px dashed',
+                  borderColor: 'grey.300'
+                }}
+              >
+                <InfoOutlinedIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  No Appointments Found
+                </Typography>
+                <Typography variant="body2" color="text.disabled">
+                  Try adjusting your filters or search terms
+                </Typography>
+                <Button
+                  variant="outlined"
+                  sx={{ mt: 3, borderRadius: 2 }}
+                  onClick={() => {
+                    setSearchTerm('');
+                    setStatusFilter('all');
+                    setDateRange({ start: '', end: '' });
+                  }}
+                >
+                  Clear All Filters
+                </Button>
+              </Paper>
+            ) : (
+              <Box>
+                {Object.entries(groupAppointmentsByDate(filteredAppointments)).map(([date, dayAppointments]) => (
+                  <Box key={date} sx={{ mb: 4 }}>
                     <Box sx={{
                       display: 'flex',
-                      flexDirection: { xs: 'row', sm: 'column' },
-                      gap: 1,
-                      flexShrink: 0
+                      alignItems: 'center',
+                      mb: 2,
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1,
+                      py: 1,
+                      backgroundColor: 'white'
                     }}>
-                      {appointment.User?.phone && (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => window.open(`https://wa.me/${appointment.User.phone.replace(/\D/g, '')}`, '_blank')}
-                          sx={{
-                            borderRadius: 2,
-                            whiteSpace: 'nowrap',
-                            backgroundColor: '#25D366',
-                            color: 'white',
-                            '&:hover': { backgroundColor: '#128C7E' },
-                            minWidth: 'auto'
-                          }}
-                        >
-                          WhatsApp
-                        </Button>
-                      )}
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => navigate(`/appointments/${appointment.id}`)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: '800',
+                          color: 'primary.main',
+                          fontSize: '1.2rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: 1
+                        }}
                       >
-                        View Details
-                      </Button>
-                      <Button
+                        {formatDateHeader(date)}
+                      </Typography>
+                      <Box sx={{ ml: 2, flex: 1, height: '1px', backgroundColor: 'grey.200' }} />
+                      <Chip
+                        label={`${dayAppointments.length} Appt${dayAppointments.length > 1 ? 's' : ''}`}
+                        size="small"
                         variant="outlined"
-                        size="small"
-                        onClick={() => alert('Edit functionality would go here')}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        Edit
-                      </Button>
+                        sx={{ ml: 2, fontWeight: 'bold', borderColor: 'primary.light', color: 'primary.main' }}
+                      />
                     </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
+
+                    <Grid container spacing={2}>
+                      {dayAppointments.map((appointment) => (
+                        <Grid item xs={12} key={appointment.id}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 0,
+                              borderRadius: 3,
+                              border: '1px solid',
+                              borderColor: 'grey.200',
+                              overflow: 'hidden',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              '&:hover': {
+                                borderColor: 'primary.main',
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                                transform: 'translateY(-2px)'
+                              },
+                              display: 'flex',
+                              flexDirection: { xs: 'column', md: 'row' }
+                            }}
+                          >
+                            <Box sx={{
+                              width: { xs: '100%', md: 6 },
+                              height: { xs: 6, md: 'auto' },
+                              backgroundColor: getStatusColor(appointment.status)
+                            }} />
+
+                            <Box sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, alignItems: 'center' }}>
+                              <Box sx={{
+                                minWidth: 120,
+                                textAlign: 'center',
+                                p: 1.5,
+                                borderRadius: 2,
+                                backgroundColor: 'grey.50',
+                                border: '1px solid',
+                                borderColor: 'grey.100'
+                              }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary', lineHeight: 1 }}>
+                                  {appointment.startTime.substring(0, 5)}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                  to {appointment.endTime.substring(0, 5)}
+                                </Typography>
+                              </Box>
+
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="h6" sx={{ fontWeight: '800', lineHeight: 1.2, mb: 0.5 }}>
+                                  {appointment.Service?.name || 'Deleted Service'}
+                                </Typography>
+                                <Stack direction="row" spacing={2} flexWrap="wrap">
+                                  <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                    <PersonIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                      {appointment.User?.firstName} {appointment.User?.lastName}
+                                    </Typography>
+                                  </Box>
+                                  {appointment.User?.phone && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                      <PhoneIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                                      <Typography variant="body2">{appointment.User.phone}</Typography>
+                                    </Box>
+                                  )}
+                                </Stack>
+                              </Box>
+
+                              <Box sx={{ textAlign: { xs: 'left', sm: 'right' }, minWidth: 100 }}>
+                                <Chip
+                                  label={appointment.status.toUpperCase()}
+                                  size="small"
+                                  sx={{
+                                    fontWeight: '900',
+                                    fontSize: '0.65rem',
+                                    backgroundColor: `${getStatusColor(appointment.status)}15`,
+                                    color: getStatusColor(appointment.status),
+                                    border: `1px solid ${getStatusColor(appointment.status)}40`,
+                                    borderRadius: 1.5
+                                  }}
+                                />
+                              </Box>
+
+                              <Stack direction="row" spacing={1} sx={{ ml: { sm: 'auto' } }}>
+                                {appointment.User?.phone && (
+                                  <Tooltip title="Contact via WhatsApp">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => window.open(`https://wa.me/${appointment.User.phone.replace(/\D/g, '')}`, '_blank')}
+                                      sx={{
+                                        color: '#25D366',
+                                        backgroundColor: '#25D36615',
+                                        '&:hover': { backgroundColor: '#25D36630' }
+                                      }}
+                                    >
+                                      <WhatsAppIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  onClick={() => navigate(`/appointments/${appointment.id}`)}
+                                  sx={{
+                                    borderRadius: 2,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    boxShadow: 'none',
+                                    '&:hover': { boxShadow: 'none' }
+                                  }}
+                                >
+                                  Manage
+                                </Button>
+                              </Stack>
+                            </Box>
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
         </Paper>
       )}
 
@@ -1211,124 +1595,126 @@ const AdminDashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {activeTab === 1 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Users
-              </Typography>
-              <TextField
-                label="Search Users"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 1 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Users
+                </Typography>
+                <TextField
+                  label="Search Users"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => alert('New user functionality would go here')}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Add New User
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => alert('New user functionality would go here')}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Add New User
-            </Button>
-          </Box>
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {filteredUsers.map((user) => (
-                <Grid item xs={12} key={user.id}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 2
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                        {user.firstName} {user.lastName}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
-                        {user.email}<br />
-                        Role: <Chip
-                          label={user.role}
-                          color={user.role === 'admin' ? 'primary' : 'default'}
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </Box>
+            ) : (
+              <Grid container spacing={2}>
+                {filteredUsers.map((user) => (
+                  <Grid item xs={12} key={user.id}>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 2
+                      }}
+                    >
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                          {user.firstName} {user.lastName}
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
+                          {user.email}<br />
+                          Role: <Chip
+                            label={user.role}
+                            color={user.role === 'admin' ? 'primary' : 'default'}
+                            size="small"
+                            sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
+                          /><br />
+                          Joined: {new Date(user.createdAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'row', sm: 'column' },
+                        gap: 1,
+                        flexShrink: 0
+                      }}>
+                        {user.phone && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => window.open(`https://wa.me/${user.phone.replace(/\D/g, '')}`, '_blank')}
+                            sx={{
+                              borderRadius: 2,
+                              whiteSpace: 'nowrap',
+                              backgroundColor: '#25D366',
+                              color: 'white',
+                              '&:hover': { backgroundColor: '#128C7E' },
+                              minWidth: 'auto'
+                            }}
+                          >
+                            WhatsApp
+                          </Button>
+                        )}
+                        <Button
+                          variant="contained"
                           size="small"
-                          sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
-                        /><br />
-                        Joined: {new Date(user.createdAt).toLocaleDateString()}
-                      </Typography>
-                    </Box>
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: { xs: 'row', sm: 'column' },
-                      gap: 1,
-                      flexShrink: 0
-                    }}>
-                      {user.phone && (
+                          onClick={() => handleViewUserDetails(user)}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                        >
+                          View Details
+                        </Button>
                         <Button
                           variant="outlined"
                           size="small"
-                          onClick={() => window.open(`https://wa.me/${user.phone.replace(/\D/g, '')}`, '_blank')}
-                          sx={{
-                            borderRadius: 2,
-                            whiteSpace: 'nowrap',
-                            backgroundColor: '#25D366',
-                            color: 'white',
-                            '&:hover': { backgroundColor: '#128C7E' },
-                            minWidth: 'auto'
-                          }}
+                          onClick={() => handleViewUserDetails(user)}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                         >
-                          WhatsApp
+                          Edit
                         </Button>
-                      )}
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handleViewUserDetails(user)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        View Details
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => handleViewUserDetails(user)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        Edit
-                      </Button>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Paper>
-      )}
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        )
+      }
       <Dialog
         open={openUserDetails}
         onClose={handleCloseUserDetails}
@@ -1392,121 +1778,123 @@ const AdminDashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {activeTab === 2 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Services
-              </Typography>
-              <TextField
-                label="Search Services"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 2 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Services
+                </Typography>
+                <TextField
+                  label="Search Services"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={handleOpenNewServiceDialog}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Add New Service
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={handleOpenNewServiceDialog}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Add New Service
-            </Button>
-          </Box>
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </Box>
-          ) : (
-            <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable droppableId="services">
-                {(provided) => (
-                  <div {...provided.droppableProps} ref={provided.innerRef}>
-                    <Grid container spacing={2}>
-                      {filteredServices.map((service, index) => (
-                        <Grid item xs={12} key={service.id}>
-                          <Draggable draggableId={service.id.toString()} index={index}>
-                            {(provided) => (
-                              <Paper
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                sx={{
-                                  p: 2,
-                                  borderRadius: 2,
-                                  display: 'flex',
-                                  flexDirection: { xs: 'column', sm: 'row' },
-                                  justifyContent: 'space-between',
-                                  alignItems: 'flex-start',
-                                  gap: 2,
-                                  backgroundColor: '#f9f9f9'
-                                }}
-                              >
-                                <Box sx={{ flex: 1, minWidth: 0 }}>
-                                  <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                                    {service.name}
-                                  </Typography>
-                                  <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
-                                    Description: {service.description}<br />
-                                    Price: ${service.price}<br />
-                                    Duration: {service.duration} min<br />
-                                    Category: {service.category}
-                                  </Typography>
-                                </Box>
-                                <Box sx={{
-                                  display: 'flex',
-                                  flexDirection: { xs: 'row', sm: 'column' },
-                                  gap: 1,
-                                  flexShrink: 0
-                                }}>
-                                  <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => handleViewServiceDetails(service)}
-                                    sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    onClick={() => alert('Delete functionality would go here')}
-                                    sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                                    color="error"
-                                  >
-                                    Delete
-                                  </Button>
-                                </Box>
-                              </Paper>
-                            )}
-                          </Draggable>
-                        </Grid>
-                      ))}
-                      {provided.placeholder}
-                    </Grid>
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
-          )}
-        </Paper>
-      )}
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </Box>
+            ) : (
+              <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="services">
+                  {(provided) => (
+                    <div {...provided.droppableProps} ref={provided.innerRef}>
+                      <Grid container spacing={2}>
+                        {filteredServices.map((service, index) => (
+                          <Grid item xs={12} key={service.id}>
+                            <Draggable draggableId={service.id.toString()} index={index}>
+                              {(provided) => (
+                                <Paper
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  sx={{
+                                    p: 2,
+                                    borderRadius: 2,
+                                    display: 'flex',
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                    justifyContent: 'space-between',
+                                    alignItems: 'flex-start',
+                                    gap: 2,
+                                    backgroundColor: '#f9f9f9'
+                                  }}
+                                >
+                                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                                      {service.name}
+                                    </Typography>
+                                    <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
+                                      Description: {service.description}<br />
+                                      Price: ${service.price}<br />
+                                      Duration: {service.duration} min<br />
+                                      Category: {service.category}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: { xs: 'row', sm: 'column' },
+                                    gap: 1,
+                                    flexShrink: 0
+                                  }}>
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      onClick={() => handleViewServiceDetails(service)}
+                                      sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      onClick={() => alert('Delete functionality would go here')}
+                                      sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                                      color="error"
+                                    >
+                                      Delete
+                                    </Button>
+                                  </Box>
+                                </Paper>
+                              )}
+                            </Draggable>
+                          </Grid>
+                        ))}
+                        {provided.placeholder}
+                      </Grid>
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            )}
+          </Paper>
+        )
+      }
       <Dialog
         open={openNewServiceDialog}
         onClose={handleCloseNewServiceDialog}
@@ -1687,690 +2075,710 @@ const AdminDashboard = () => {
       </Dialog>
 
 
-      {activeTab === 3 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Staff
-              </Typography>
-              <TextField
-                label="Search Staff"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 3 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Staff
+                </Typography>
+                <TextField
+                  label="Search Staff"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={handleOpenNewStaffDialog}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Add New Staff
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={handleOpenNewStaffDialog}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Add New Staff
-            </Button>
-          </Box>
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {filteredStaff.map((staffMember) => (
-                <Grid item xs={12} key={staffMember.id}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 2
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                        {staffMember.User?.firstName} {staffMember.User?.lastName}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
-                        Specialization: {staffMember.specialization || 'N/A'}<br />
-                        Experience: {staffMember.experience || 'N/A'} years<br />
-                        Email: {staffMember.User?.email}
-                      </Typography>
-                    </Box>
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: { xs: 'row', sm: 'column' },
-                      gap: 1,
-                      flexShrink: 0
-                    }}>
-                      {staffMember.User?.phone && (
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </Box>
+            ) : (
+              <Grid container spacing={2}>
+                {filteredStaff.map((staffMember) => (
+                  <Grid item xs={12} key={staffMember.id}>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 2
+                      }}
+                    >
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                          {staffMember.User?.firstName} {staffMember.User?.lastName}
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
+                          Specialization: {staffMember.specialization || 'N/A'}<br />
+                          Experience: {staffMember.experience || 'N/A'} years<br />
+                          Email: {staffMember.User?.email}
+                        </Typography>
+                      </Box>
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'row', sm: 'column' },
+                        gap: 1,
+                        flexShrink: 0
+                      }}>
+                        {staffMember.User?.phone && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => window.open(`https://wa.me/${staffMember.User.phone.replace(/\D/g, '')}`, '_blank')}
+                            sx={{
+                              borderRadius: 2,
+                              whiteSpace: 'nowrap',
+                              backgroundColor: '#25D366',
+                              color: 'white',
+                              '&:hover': { backgroundColor: '#128C7E' },
+                              minWidth: 'auto'
+                            }}
+                          >
+                            WhatsApp
+                          </Button>
+                        )}
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => handleViewStaffDetails(staffMember)}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                        >
+                          Edit
+                        </Button>
                         <Button
                           variant="outlined"
                           size="small"
-                          onClick={() => window.open(`https://wa.me/${staffMember.User.phone.replace(/\D/g, '')}`, '_blank')}
-                          sx={{
-                            borderRadius: 2,
-                            whiteSpace: 'nowrap',
-                            backgroundColor: '#25D366',
-                            color: 'white',
-                            '&:hover': { backgroundColor: '#128C7E' },
-                            minWidth: 'auto'
-                          }}
+                          onClick={() => alert('Delete functionality would go here')}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                          color="error"
                         >
-                          WhatsApp
+                          Delete
                         </Button>
-                      )}
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handleViewStaffDetails(staffMember)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => alert('Delete functionality would go here')}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                        color="error"
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Paper>
-      )}
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        )
+      }
 
-      {activeTab === 4 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Payments
-              </Typography>
-              <TextField
-                label="Search Payments"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 4 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Payments
+                </Typography>
+                <TextField
+                  label="Search Payments"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => alert('New payment functionality would go here')}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Add New Payment
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => alert('New payment functionality would go here')}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Add New Payment
-            </Button>
-          </Box>
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {filteredPayments.map((payment) => (
-                <Grid item xs={12} key={payment.id}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 2
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                        ${payment.amount} - {payment.status}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
-                        Appointment ID: {payment.appointmentId}<br />
-                        User: {payment.Appointment?.User?.firstName} {payment.Appointment?.User?.lastName}<br />
-                        Paid At: {payment.paidAt ? new Date(payment.paidAt).toLocaleString() : 'N/A'}<br />
-                        Method: {payment.paymentMethod || 'N/A'}
-                      </Typography>
-                    </Box>
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: { xs: 'row', sm: 'column' },
-                      gap: 1,
-                      flexShrink: 0
-                    }}>
-                      {payment.Appointment?.User?.phone && (
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </Box>
+            ) : (
+              <Grid container spacing={2}>
+                {filteredPayments.map((payment) => (
+                  <Grid item xs={12} key={payment.id}>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 2
+                      }}
+                    >
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                          ${payment.amount} - {payment.status}
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
+                          Appointment ID: {payment.appointmentId}<br />
+                          User: {payment.Appointment?.User?.firstName} {payment.Appointment?.User?.lastName}<br />
+                          Paid At: {payment.paidAt ? new Date(payment.paidAt).toLocaleString() : 'N/A'}<br />
+                          Method: {payment.paymentMethod || 'N/A'}
+                        </Typography>
+                      </Box>
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'row', sm: 'column' },
+                        gap: 1,
+                        flexShrink: 0
+                      }}>
+                        {payment.Appointment?.User?.phone && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => window.open(`https://wa.me/${payment.Appointment.User.phone.replace(/\D/g, '')}`, '_blank')}
+                            sx={{
+                              borderRadius: 2,
+                              whiteSpace: 'nowrap',
+                              backgroundColor: '#25D366',
+                              color: 'white',
+                              '&:hover': { backgroundColor: '#128C7E' },
+                              minWidth: 'auto'
+                            }}
+                          >
+                            WhatsApp
+                          </Button>
+                        )}
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => handleViewPaymentDetails(payment)}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                        >
+                          View Details
+                        </Button>
                         <Button
                           variant="outlined"
                           size="small"
-                          onClick={() => window.open(`https://wa.me/${payment.Appointment.User.phone.replace(/\D/g, '')}`, '_blank')}
-                          sx={{
-                            borderRadius: 2,
-                            whiteSpace: 'nowrap',
-                            backgroundColor: '#25D366',
-                            color: 'white',
-                            '&:hover': { backgroundColor: '#128C7E' },
-                            minWidth: 'auto'
-                          }}
+                          onClick={() => alert('Edit functionality would go here')}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
                         >
-                          WhatsApp
+                          Edit
                         </Button>
-                      )}
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handleViewPaymentDetails(payment)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        View Details
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => alert('Edit functionality would go here')}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        Edit
-                      </Button>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Paper>
-      )}
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        )
+      }
 
-      {activeTab === 5 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Promotions
-              </Typography>
-              <TextField
-                label="Search Promotions"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 5 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Promotions
+                </Typography>
+                <TextField
+                  label="Search Promotions"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={handleOpenNewPromotionDialog}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Add New Promotion
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={handleOpenNewPromotionDialog}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Add New Promotion
-            </Button>
-          </Box>
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {filteredPromotions.map((promo) => (
-                <Grid item xs={12} key={promo.id}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 2
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                        {promo.code}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
-                        {promo.description}<br />
-                        Discount: {promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue}`}<br />
-                        Valid: {new Date(promo.startDate).toLocaleDateString()} - {new Date(promo.endDate).toLocaleDateString()}<br />
-                        Usage: {promo.timesUsed} / {promo.usageLimit}
-                      </Typography>
-                    </Box>
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: { xs: 'row', sm: 'column' },
-                      gap: 1,
-                      flexShrink: 0
-                    }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handleOpenEditPromotionDialog(promo)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => handleDeletePromotion(promo.id)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                        color="error"
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Paper>
-      )}
-
-      {activeTab === 6 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Categories
-              </Typography>
-              <TextField
-                label="Search Categories"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
-            </Box>
-            <Button
-              variant="contained"
-              onClick={() => setOpenNewCategoryDialog(true)}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Add New Category
-            </Button>
-          </Box>
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {filteredCategories.map((category) => (
-                <Grid item xs={12} sm={6} md={4} key={category.id}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      minHeight: 120
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                        {category.name}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-                        {category.description || 'No description provided'}<br />
-                        Status: <Chip
-                          label={category.isActive ? 'Active' : 'Inactive'}
-                          color={category.isActive ? 'success' : 'error'}
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </Box>
+            ) : (
+              <Grid container spacing={2}>
+                {filteredPromotions.map((promo) => (
+                  <Grid item xs={12} key={promo.id}>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 2
+                      }}
+                    >
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                          {promo.code}
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
+                          {promo.description}<br />
+                          Discount: {promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue}`}<br />
+                          Valid: {new Date(promo.startDate).toLocaleDateString()} - {new Date(promo.endDate).toLocaleDateString()}<br />
+                          Usage: {promo.timesUsed} / {promo.usageLimit}
+                        </Typography>
+                      </Box>
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'row', sm: 'column' },
+                        gap: 1,
+                        flexShrink: 0
+                      }}>
+                        <Button
+                          variant="contained"
                           size="small"
-                          sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
-                        />
-                      </Typography>
-                    </Box>
-                    <Box sx={{
-                      mt: 2,
-                      display: 'flex',
-                      flexDirection: { xs: 'row', sm: 'column' },
-                      gap: 1,
-                      flexShrink: 0
-                    }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => {
-                          setSelectedCategory(category);
-                          setEditCategoryData({
-                            name: category.name,
-                            description: category.description || '',
-                            isActive: category.isActive
-                          });
-                          setOpenEditCategoryDialog(true);
-                        }}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => handleDeleteCategory(category.id)}
-                        sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
-                        color="error"
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Paper>
-      )}
+                          onClick={() => handleOpenEditPromotionDialog(promo)}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleDeletePromotion(promo.id)}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                          color="error"
+                        >
+                          Delete
+                        </Button>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        )
+      }
 
-      {activeTab === 7 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Content Management
-              </Typography>
-              <TextField
-                label="Search Content"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 6 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Categories
+                </Typography>
+                <TextField
+                  label="Search Categories"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => setOpenNewCategoryDialog(true)}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Add New Category
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => window.location.href = '/admin/content'}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Manage Content
-            </Button>
-          </Box>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Use the content management system to create and edit website content, pages, and articles.
-          </Typography>
-        </Paper>
-      )}
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </Box>
+            ) : (
+              <Grid container spacing={2}>
+                {filteredCategories.map((category) => (
+                  <Grid item xs={12} sm={6} md={4} key={category.id}>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        minHeight: 120
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                          {category.name}
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+                          {category.description || 'No description provided'}<br />
+                          Status: <Chip
+                            label={category.isActive ? 'Active' : 'Inactive'}
+                            color={category.isActive ? 'success' : 'error'}
+                            size="small"
+                            sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
+                          />
+                        </Typography>
+                      </Box>
+                      <Box sx={{
+                        mt: 2,
+                        display: 'flex',
+                        flexDirection: { xs: 'row', sm: 'column' },
+                        gap: 1,
+                        flexShrink: 0
+                      }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => {
+                            setSelectedCategory(category);
+                            setEditCategoryData({
+                              name: category.name,
+                              description: category.description || '',
+                              isActive: category.isActive
+                            });
+                            setOpenEditCategoryDialog(true);
+                          }}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleDeleteCategory(category.id)}
+                          sx={{ borderRadius: 2, whiteSpace: 'nowrap' }}
+                          color="error"
+                        >
+                          Delete
+                        </Button>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        )
+      }
 
-      {activeTab === 8 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                File Management
-              </Typography>
-              <TextField
-                label="Search Files"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 7 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Content Management
+                </Typography>
+                <TextField
+                  label="Search Content"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => window.location.href = '/admin/content'}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Manage Content
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => window.location.href = '/admin/files'}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Manage Files
-            </Button>
-          </Box>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Upload, organize, and manage media files and documents for your website.
-          </Typography>
-        </Paper>
-      )}
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              Use the content management system to create and edit website content, pages, and articles.
+            </Typography>
+          </Paper>
+        )
+      }
 
-      {activeTab === 9 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Form Builder
-              </Typography>
-              <TextField
-                label="Search Forms"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 8 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  File Management
+                </Typography>
+                <TextField
+                  label="Search Files"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => window.location.href = '/admin/files'}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Manage Files
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => window.location.href = '/admin/forms'}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Build Forms
-            </Button>
-          </Box>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Create custom forms for collecting user data, feedback, and other information.
-          </Typography>
-        </Paper>
-      )}
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              Upload, organize, and manage media files and documents for your website.
+            </Typography>
+          </Paper>
+        )
+      }
 
-      {activeTab === 10 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Calendar Integration
-              </Typography>
-              <TextField
-                label="Search Calendar Settings"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 9 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Form Builder
+                </Typography>
+                <TextField
+                  label="Search Forms"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => window.location.href = '/admin/forms'}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Build Forms
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => window.location.href = '/admin/calendar'}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Configure Calendar
-            </Button>
-          </Box>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Connect your calendar applications to automatically sync appointments.
-          </Typography>
-        </Paper>
-      )}
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              Create custom forms for collecting user data, feedback, and other information.
+            </Typography>
+          </Paper>
+        )
+      }
 
-      {activeTab === 11 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                Webhook Management
-              </Typography>
-              <TextField
-                label="Search Webhooks"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 10 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Calendar Integration
+                </Typography>
+                <TextField
+                  label="Search Calendar Settings"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => window.location.href = '/admin/calendar'}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Configure Calendar
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => window.location.href = '/admin/webhooks'}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Manage Webhooks
-            </Button>
-          </Box>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Configure webhooks to receive real-time notifications about system events.
-          </Typography>
-        </Paper>
-      )}
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              Connect your calendar applications to automatically sync appointments.
+            </Typography>
+          </Paper>
+        )
+      }
 
-      {activeTab === 12 && (
-        <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            mb: 2,
-            gap: 2
-          }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
-                API Documentation
-              </Typography>
-              <TextField
-                label="Search API Docs"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ maxWidth: { xs: '100%', sm: 300 } }}
-              />
+      {
+        activeTab === 11 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  Webhook Management
+                </Typography>
+                <TextField
+                  label="Search Webhooks"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => window.location.href = '/admin/webhooks'}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Manage Webhooks
+              </Button>
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => window.location.href = '/api-docs'}
-              sx={{
-                borderRadius: 2,
-                fontWeight: 'bold',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              View Documentation
-            </Button>
-          </Box>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Access comprehensive API documentation with interactive testing tools.
-          </Typography>
-        </Paper>
-      )}
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              Configure webhooks to receive real-time notifications about system events.
+            </Typography>
+          </Paper>
+        )
+      }
+
+      {
+        activeTab === 12 && (
+          <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  API Documentation
+                </Typography>
+                <TextField
+                  label="Search API Docs"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: { xs: '100%', sm: 300 } }}
+                />
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => window.location.href = '/api-docs'}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 'bold',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                View Documentation
+              </Button>
+            </Box>
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              Access comprehensive API documentation with interactive testing tools.
+            </Typography>
+          </Paper>
+        )
+      }
 
       {/* Add Category Dialog */}
       <Dialog open={openNewCategoryDialog} onClose={() => setOpenNewCategoryDialog(false)} maxWidth="sm" fullWidth>
@@ -2642,34 +3050,318 @@ const AdminDashboard = () => {
           <Button onClick={handleClosePaymentDetails}>Close</Button>
         </DialogActions>
       </Dialog>
-      {activeTab === 12 && (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="h6" gutterBottom>API Documentation</Typography>
-          <Button variant="contained" onClick={() => navigate('/api-docs')}>
-            View API Documentation
-          </Button>
-        </Box>
-      )}
+      {
+        activeTab === 12 && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="h6" gutterBottom>API Documentation</Typography>
+            <Button variant="contained" onClick={() => navigate('/api-docs')}>
+              View API Documentation
+            </Button>
+          </Box>
+        )
+      }
 
-      {activeTab === 13 && (
-        <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2, textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom className="fw-bold">
-            Theme Customization
-          </Typography>
-          <Typography variant="body1" color="text.secondary" paragraph>
-            Customize the look and feel of your booking system, including colors, fonts, and shapes.
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={() => navigate('/admin/theme')}
-            sx={{ mt: 2 }}
-          >
-            Manage Theme Settings
-          </Button>
-        </Paper>
-      )}
-    </Container>
+      {
+        activeTab === 13 && (
+          <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2, textAlign: 'center' }}>
+            <Typography variant="h5" gutterBottom className="fw-bold">
+              Theme Customization
+            </Typography>
+            <Typography variant="body1" color="text.secondary" paragraph>
+              Customize the look and feel of your booking system, including colors, fonts, and shapes.
+            </Typography>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => navigate('/admin/theme')}
+              sx={{ mt: 2 }}
+            >
+              Manage Theme Settings
+            </Button>
+          </Paper>
+        )
+      }
+
+      {
+        activeTab === 14 && (
+          <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 4,
+              gap: 2
+            }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h5" className="fw-bold" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 1 }}>
+                  System Settings
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Configure global application settings and features.
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ mt: 2 }}>
+              <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
+                <Grid container alignItems="center" spacing={2}>
+                  <Grid item xs={12} sm={8}>
+                    <Typography variant="h6" className="fw-bold">
+                      Loyalty Points System
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      When enabled, users will earn loyalty points for every completed appointment (1 point per $1 spent).
+                      Users can then redeem these points for discounts on future bookings.
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4} sx={{ textAlign: { sm: 'right' } }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={loyaltyPointsEnabled}
+                          onChange={handleToggleLoyaltyPoints}
+                          disabled={loyaltyLoading}
+                          color="primary"
+                          size="large"
+                        />
+                      }
+                      label={loyaltyPointsEnabled ? "Enabled" : "Disabled"}
+                      sx={{
+                        '& .MuiFormControlLabel-label': {
+                          fontWeight: 'bold',
+                          color: loyaltyPointsEnabled ? 'primary.main' : 'text.secondary'
+                        }
+                      }}
+                    />
+                    {loyaltyLoading && (
+                      <Box sx={{ display: 'block', mt: 1 }}>
+                        <Typography variant="caption" color="primary">Updating...</Typography>
+                      </Box>
+                    )}
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Box>
+          </Paper>
+        )
+      }
+
+      {
+        activeTab === 15 && (
+          <Box>
+            <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2, mb: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" className="fw-bold">Standard Weekly Hours</Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleSaveStoreHours}
+                  disabled={scheduleLoading}
+                >
+                  {scheduleLoading ? 'Saving...' : 'Save Weekly Hours'}
+                </Button>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Set the default opening and closing times for each day of the week.
+              </Typography>
+
+              <Grid container spacing={2}>
+                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => {
+                  const hour = storeHours.find(h => h.dayOfWeek === index) || { dayOfWeek: index, openTime: '09:00:00', closeTime: '18:00:00', isOpen: true };
+                  return (
+                    <Grid item xs={12} key={day}>
+                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ width: 120 }}>
+                          <Typography className="fw-bold">{day}</Typography>
+                        </Box>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={hour.isOpen}
+                              onChange={() => {
+                                const newHours = [...storeHours];
+                                const hIndex = newHours.findIndex(h => h.dayOfWeek === index);
+                                if (hIndex > -1) {
+                                  newHours[hIndex].isOpen = !newHours[hIndex].isOpen;
+                                } else {
+                                  newHours.push({ dayOfWeek: index, openTime: '09:00:00', closeTime: '18:00:00', isOpen: !hour.isOpen });
+                                }
+                                setStoreHours(newHours);
+                              }}
+                            />
+                          }
+                          label={hour.isOpen ? "Open" : "Closed"}
+                        />
+                        {hour.isOpen && (
+                          <>
+                            <TextField
+                              label="Open"
+                              type="time"
+                              value={hour.openTime ? hour.openTime.substring(0, 5) : '09:00'}
+                              onChange={(e) => {
+                                const newHours = [...storeHours];
+                                const hIndex = newHours.findIndex(h => h.dayOfWeek === index);
+                                if (hIndex > -1) {
+                                  newHours[hIndex].openTime = e.target.value + ':00';
+                                } else {
+                                  newHours.push({ dayOfWeek: index, openTime: e.target.value + ':00', closeTime: '18:00:00', isOpen: true });
+                                }
+                                setStoreHours(newHours);
+                              }}
+                              InputLabelProps={{ shrink: true }}
+                              inputProps={{ step: 300 }}
+                              size="small"
+                            />
+                            <TextField
+                              label="Close"
+                              type="time"
+                              value={hour.closeTime ? hour.closeTime.substring(0, 5) : '18:00'}
+                              onChange={(e) => {
+                                const newHours = [...storeHours];
+                                const hIndex = newHours.findIndex(h => h.dayOfWeek === index);
+                                if (hIndex > -1) {
+                                  newHours[hIndex].closeTime = e.target.value + ':00';
+                                } else {
+                                  newHours.push({ dayOfWeek: index, openTime: '09:00:00', closeTime: e.target.value + ':00', isOpen: true });
+                                }
+                                setStoreHours(newHours);
+                              }}
+                              InputLabelProps={{ shrink: true }}
+                              inputProps={{ step: 300 }}
+                              size="small"
+                            />
+                          </>
+                        )}
+                      </Paper>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" className="fw-bold">Special Closures & Exceptions</Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={<i className="bi bi-plus-lg"></i>}
+                  onClick={() => setExceptionDialogOpen(true)}
+                >
+                  Add Exception
+                </Button>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Add holidays, special events, or one-off schedule changes.
+              </Typography>
+
+              <Grid container spacing={2}>
+                {storeExceptions.length === 0 ? (
+                  <Grid item xs={12}>
+                    <Box sx={{ p: 4, textAlign: 'center', border: '1px dashed grey', borderRadius: 2 }}>
+                      <Typography color="text.secondary">No special exceptions defined yet.</Typography>
+                    </Box>
+                  </Grid>
+                ) : (
+                  storeExceptions.map((ex) => (
+                    <Grid item xs={12} sm={6} md={4} key={ex.id}>
+                      <Card sx={{ borderRadius: 2, boxShadow: 1 }}>
+                        <CardContent>
+                          <Typography variant="h6" className="fw-bold">{new Date(ex.date).toLocaleDateString()}</Typography>
+                          <Chip
+                            label={ex.isOpen ? "Special Hours" : "Closed"}
+                            color={ex.isOpen ? "info" : "error"}
+                            size="small"
+                            sx={{ mb: 1 }}
+                          />
+                          {ex.isOpen ? (
+                            <Typography variant="body2">
+                              {ex.openTime.substring(0, 5)} - {ex.closeTime.substring(0, 5)}
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" color="error">All Day Closure</Typography>
+                          )}
+                          {ex.reason && (
+                            <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                              {ex.reason}
+                            </Typography>
+                          )}
+                        </CardContent>
+                        <CardActions sx={{ justifyContent: 'flex-end' }}>
+                          <Button size="small" color="error" onClick={() => handleDeleteException(ex.id)}>Delete</Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  ))
+                )}
+              </Grid>
+            </Paper>
+
+            {/* Exception Dialog */}
+            <Dialog open={exceptionDialogOpen} onClose={() => setExceptionDialogOpen(false)}>
+              <DialogTitle className="fw-bold">Add Schedule Exception</DialogTitle>
+              <DialogContent sx={{ pt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Date"
+                  type="date"
+                  value={newException.date}
+                  onChange={(e) => setNewException({ ...newException, date: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ mb: 3, mt: 1 }}
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={newException.isOpen}
+                      onChange={(e) => setNewException({ ...newException, isOpen: e.target.checked })}
+                    />
+                  }
+                  label="Is the store open on this date?"
+                  sx={{ mb: 2, display: 'block' }}
+                />
+                {newException.isOpen && (
+                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                    <TextField
+                      label="Open Time"
+                      type="time"
+                      value={newException.openTime}
+                      onChange={(e) => setNewException({ ...newException, openTime: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                    />
+                    <TextField
+                      label="Close Time"
+                      type="time"
+                      value={newException.closeTime}
+                      onChange={(e) => setNewException({ ...newException, closeTime: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                    />
+                  </Box>
+                )}
+                <TextField
+                  fullWidth
+                  label="Reason (e.g. New Year's Day, Summer Break)"
+                  value={newException.reason}
+                  onChange={(e) => setNewException({ ...newException, reason: e.target.value })}
+                  placeholder="Why is the schedule changing?"
+                />
+              </DialogContent>
+              <DialogActions sx={{ p: 3 }}>
+                <Button onClick={() => setExceptionDialogOpen(false)}>Cancel</Button>
+                <Button
+                  variant="contained"
+                  onClick={handleAddException}
+                  disabled={!newException.date || scheduleLoading}
+                >
+                  Add Exception
+                </Button>
+              </DialogActions>
+            </Dialog>
+          </Box>
+        )
+      }
+    </Container >
   );
 };
 

@@ -247,4 +247,21 @@ export const waitingListAPI = {
   leave: (id) => API.delete(`/waiting-list/${id}`)
 };
 
+// Settings API calls
+export const settingsAPI = {
+  getSettings: () => API.get('/settings'),
+  getSetting: (key) => API.get(`/settings/${key}`),
+  updateSetting: (key, data) => API.put(`/settings/${key}`, data)
+};
+
+// Schedule API calls
+export const scheduleAPI = {
+  getStoreHours: () => API.get('/schedule/hours'),
+  updateStoreHours: (hours) => API.put('/schedule/hours', { hours }),
+  getStoreExceptions: () => API.get('/schedule/exceptions'),
+  createStoreException: (data) => API.post('/schedule/exceptions', data),
+  updateStoreException: (id, data) => API.put(`/schedule/exceptions/${id}`, data),
+  deleteStoreException: (id) => API.delete(`/schedule/exceptions/${id}`)
+};
+
 export default API;
