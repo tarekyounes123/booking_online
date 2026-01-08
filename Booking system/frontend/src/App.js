@@ -1,8 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+// import { ThemeProvider, createTheme } from '@mui/material/styles'; // Moved to ThemeProviderWrapper
+// import CssBaseline from '@mui/material/CssBaseline'; // Moved to ThemeProviderWrapper
 import { Helmet } from 'react-helmet';
 import { generateOrganizationSchema, generateLocalBusinessSchema } from './utils/structuredData';
 import { newsletterAPI } from './services/api';
@@ -39,38 +39,14 @@ import FormBuilderPage from './pages/FormBuilderPage';
 import CalendarIntegrationPage from './pages/CalendarIntegrationPage';
 import WebhookManagementPage from './pages/WebhookManagementPage';
 import ApiDocumentationPage from './pages/ApiDocumentationPage';
+import AdminThemeSettings from './pages/AdminThemeSettings';
+import ThemeProviderWrapper from './components/ThemeProviderWrapper'; // Import dynamic theme wrapper
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import StaffRoute from './components/StaffRoute';
 
 // Create a client for React Query
 const queryClient = new QueryClient();
-
-// Create theme
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#e57373',
-    },
-    background: {
-      default: '#f5f5f5',
-    },
-  },
-  typography: {
-    fontFamily: [
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
-      'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
-      'sans-serif',
-    ].join(','),
-  },
-});
 
 function App() {
   const handleNewsletterSubscribe = async () => {
@@ -99,8 +75,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
+      <ThemeProviderWrapper>
         <Router>
           <div className="App">
             <Helmet>
@@ -265,6 +240,14 @@ function App() {
                       </AdminRoute>
                     }
                   />
+                  <Route
+                    path="/admin/theme"
+                    element={
+                      <AdminRoute>
+                        <AdminThemeSettings />
+                      </AdminRoute>
+                    }
+                  />
 
                   {/* Staff routes */}
                   <Route
@@ -339,7 +322,7 @@ function App() {
             </footer>
           </div>
         </Router>
-      </ThemeProvider>
+      </ThemeProviderWrapper>
     </QueryClientProvider>
   );
 }

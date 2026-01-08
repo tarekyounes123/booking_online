@@ -49,6 +49,12 @@ export const userAPI = {
   deleteUser: (id) => API.delete(`/users/${id}`)
 };
 
+// Theme API calls
+export const themeAPI = {
+  getTheme: () => API.get('/theme'),
+  updateTheme: (data) => API.put('/theme', data)
+};
+
 // Service API calls
 export const serviceAPI = {
   getServices: () => API.get('/services'),
@@ -123,12 +129,15 @@ export const staffAPI = {
   updateStaff: (id, staffData) => API.put(`/staff/${id}`, staffData),
   deleteStaff: (id) => API.delete(`/staff/${id}`),
   getStaffAppointments: (id) => API.get(`/staff/${id}/appointments`),
-  getStaffByBranch: (branchId) => API.get(`/staff/branch/${branchId}`)
+  getStaffByBranch: (branchId) => API.get(`/staff/branch/${branchId}`),
+  getStaffSchedule: (id) => API.get(`/staff/${id}/schedule`),
+  updateStaffSchedule: (id, schedules) => API.put(`/staff/${id}/schedule`, { schedules })
 };
 
 // Payment API calls (now promotion-focused)
 export const paymentAPI = {
   applyPromotion: (promotionData) => API.post('/payments/apply-promotion', promotionData),
+  redeemPoints: (data) => API.post('/payments/redeem-points', data),
   getPayments: () => API.get('/payments'),
   getPayment: (id) => API.get(`/payments/${id}`),
   getPaymentReceipt: (id) => API.get(`/payments/${id}/receipt`)
@@ -229,6 +238,13 @@ export const webhookAPI = {
   updateWebhook: (id, webhookData) => API.put(`/webhooks/${id}`, webhookData),
   deleteWebhook: (id) => API.delete(`/webhooks/${id}`),
   testWebhook: (id) => API.post(`/webhooks/${id}/test`)
+};
+
+// Waiting List API calls
+export const waitingListAPI = {
+  join: (data) => API.post('/waiting-list/join', data),
+  getList: () => API.get('/waiting-list'),
+  leave: (id) => API.delete(`/waiting-list/${id}`)
 };
 
 export default API;

@@ -29,8 +29,11 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
   const upcomingAppointments = appointments.filter(
-    appt => new Date(appt.date) >= new Date() && appt.status !== 'completed'
+    appt => appt.date >= todayStr && !['completed', 'cancelled', 'no-show'].includes(appt.status)
   );
 
   const completedAppointments = appointments.filter(
@@ -148,8 +151,8 @@ const Dashboard = () => {
                           sx={{ borderRadius: 2, mr: 1 }}
                         />
                         {appointment.status === 'pending' && (
-                          <Button 
-                            variant="contained" 
+                          <Button
+                            variant="contained"
                             size="small"
                             onClick={() => navigate(`/checkout/${appointment.id}`)}
                             sx={{ borderRadius: 2 }}

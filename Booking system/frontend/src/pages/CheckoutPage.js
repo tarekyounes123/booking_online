@@ -67,11 +67,11 @@ const CheckoutPage = () => {
   };
 
   if (loading) {
-    return <Container sx={{textAlign: 'center', mt: 5}}><CircularProgress /></Container>;
+    return <Container sx={{ textAlign: 'center', mt: 5 }}><CircularProgress /></Container>;
   }
 
   if (error && !appointment) {
-      return <Container><Alert severity="error">{error}</Alert></Container>
+    return <Container><Alert severity="error">{error}</Alert></Container>
   }
 
   if (!appointment) {
@@ -83,41 +83,85 @@ const CheckoutPage = () => {
       <Paper sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom>Promotion Code Application</Typography>
         <Box sx={{ mb: 2 }}>
-            <Typography variant="h6">{appointment.Service.name}</Typography>
-            <Typography color="text.secondary">Date: {new Date(appointment.date).toLocaleDateString()}</Typography>
-            <Typography color="text.secondary">Time: {appointment.startTime}</Typography>
-            <hr/>
-            <Typography variant="h6" sx={{mt: 2}}>Original Price: {currency.toUpperCase()} {appointment.originalPrice ? parseFloat(appointment.originalPrice).toFixed(2) : parseFloat(appointment.Service.price).toFixed(2)}</Typography>
-            {appointment.discountAmount > 0 && (
-                <Typography color="green">Discount ({appointment.Promotion?.code || discount?.code}): -{currency.toUpperCase()} {parseFloat(appointment.discountAmount || discount?.amount || 0).toFixed(2)}</Typography>
-            )}
-            <Typography variant="h5" sx={{mt:1}}>Final Price: {currency.toUpperCase()} {appointment.discountedPrice ? parseFloat(appointment.discountedPrice).toFixed(2) : finalAmount ? finalAmount.toFixed(2) : '...'}</Typography>
+          <Typography variant="h6">{appointment.Service.name}</Typography>
+          <Typography color="text.secondary">Date: {new Date(appointment.date).toLocaleDateString()}</Typography>
+          <Typography color="text.secondary">Time: {appointment.startTime}</Typography>
+          <hr />
+          <Typography variant="h6" sx={{ mt: 2 }}>Original Price: {currency.toUpperCase()} {appointment.originalPrice ? parseFloat(appointment.originalPrice).toFixed(2) : parseFloat(appointment.Service.price).toFixed(2)}</Typography>
+          {appointment.discountAmount > 0 && (
+            <Typography color="green">Discount ({appointment.Promotion?.code || discount?.code}): -{currency.toUpperCase()} {parseFloat(appointment.discountAmount || discount?.amount || 0).toFixed(2)}</Typography>
+          )}
+          <Typography variant="h5" sx={{ mt: 1 }}>Final Price: {currency.toUpperCase()} {appointment.discountedPrice ? parseFloat(appointment.discountedPrice).toFixed(2) : finalAmount ? finalAmount.toFixed(2) : '...'}</Typography>
         </Box>
 
-        {error && <Alert severity="error" sx={{mb: 2}}>{error}</Alert>}
-        {successMessage && <Alert severity="success" sx={{mb: 2}}>{successMessage}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {successMessage && <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>}
 
         {!promotionApplied && !appointment.discountAmount ? (
           <>
             <Box sx={{ display: 'flex', gap: 1, my: 2, alignItems: 'center' }}>
               <TextField
-                  label="Promo Code"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  fullWidth
+                label="Promo Code"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                fullWidth
               />
               <Button onClick={handleApplyPromo}>Apply</Button>
             </Box>
+
+            {!promotionApplied && (
+              <Box sx={{ mt: 3, p: 2, border: '1px dashed grey', borderRadius: 2 }}>
+                <Typography variant="h6">Redeem Loyalty Points</Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Available Points: {appointment.User?.loyaltyPoints || 0} (10 pts = $1)
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <TextField
+                    type="number"
+                    label="Points to Redeem"
+                    size="small"
+                    inputProps={{ min: 0 }}
+                    id="points-input"
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={async () => {
+                      const points = document.getElementById('points-input').value;
+                      if (!points) return;
+                      try {
+                        const res = await paymentAPI.redeemPoints({
+                          appointmentId,
+                          pointsToRedeem: parseInt(points)
+                        });
+                        setDiscount({ code: 'LOYALTY', amount: res.data.discountAmount });
+                        setFinalAmount(res.data.finalAmount);
+                        setPromotionApplied(true);
+                        setSuccessMessage(`Redeemed ${points} points for $${res.data.discountAmount} discount!`);
+
+                        // Refresh appointment
+                        const updatedRes = await appointmentAPI.getAppointment(appointmentId);
+                        setAppointment(updatedRes.data.data);
+                      } catch (err) {
+                        setError(err.response?.data?.error || 'Redemption failed');
+                      }
+                    }}
+                  >
+                    Redeem
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
             <Box sx={{ display: 'flex', gap: 2, my: 2 }}>
               <TextField
-                  select
-                  label="Currency"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  fullWidth
+                select
+                label="Currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                fullWidth
               >
-                  <MenuItem value="usd">USD ($)</MenuItem>
-                  <MenuItem value="lbp">LBP (ل.ل.)</MenuItem>
+                <MenuItem value="usd">USD ($)</MenuItem>
+                <MenuItem value="lbp">LBP (ل.ل.)</MenuItem>
               </TextField>
             </Box>
           </>

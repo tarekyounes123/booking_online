@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleLogout = async () => {
     await logout();
@@ -33,17 +36,17 @@ const Navbar = () => {
         <div className="collapse navbar-collapse" id="navbarNav">
           <ul className="navbar-nav me-auto">
             <li className="nav-item">
-              <Link className="nav-link" to="/">Home</Link>
+              <Link className="nav-link" to="/">{t('welcome')}</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link" to="/services">Services</Link>
+              <Link className="nav-link" to="/services">{t('services')}</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link" to="/gallery">Gallery</Link>
+              <Link className="nav-link" to="/gallery">{t('gallery')}</Link>
             </li>
             {user && (
               <li className="nav-item">
-                <Link className="nav-link" to="/dashboard">Dashboard</Link>
+                <Link className="nav-link" to="/dashboard">{t('dashboard')}</Link>
               </li>
             )}
             {user?.role === 'admin' && (
@@ -57,7 +60,7 @@ const Navbar = () => {
                 <li className="nav-item">
                   <Link className="nav-link" to="/admin/gallery">Gallery</Link>
                 </li>
-                
+
               </>
             )}
             {user?.role === 'staff' && (
@@ -68,6 +71,9 @@ const Navbar = () => {
           </ul>
 
           <ul className="navbar-nav">
+            <li className="nav-item">
+              <LanguageSwitcher />
+            </li>
             {user ? (
               <>
                 <li className="nav-item dropdown">
@@ -82,19 +88,19 @@ const Navbar = () => {
                     {user.firstName} {user.lastName}
                   </a>
                   <ul className="dropdown-menu">
-                    <li><Link className="dropdown-item" to="/profile">Profile</Link></li>
+                    <li><Link className="dropdown-item" to="/profile">{t('profile')}</Link></li>
                     <li><hr className="dropdown-divider" /></li>
-                    <li><button className="dropdown-item text-danger" onClick={handleLogout}>Logout</button></li>
+                    <li><button className="dropdown-item text-danger" onClick={handleLogout}>{t('logout')}</button></li>
                   </ul>
                 </li>
               </>
             ) : (
               <>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/login">Login</Link>
+                  <Link className="nav-link" to="/login">{t('login')}</Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/register">Register</Link>
+                  <Link className="nav-link" to="/register">{t('register')}</Link>
                 </li>
               </>
             )}

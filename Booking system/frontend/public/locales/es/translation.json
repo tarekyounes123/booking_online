@@ -1,0 +1,19 @@
+{
+    "welcome": "Bienvenido al Sistema de Reservas",
+    "book_appointment": "Reservar Cita",
+    "services": "Servicios",
+    "gallery": "Galería",
+    "login": "Iniciar Sesión",
+    "register": "Registrarse",
+    "dashboard": "Panel de Control",
+    "logout": "Cerrar Sesión",
+    "profile": "Perfil",
+    "my_bookings": "Mis Reservas",
+    "admin_dashboard": "Panel de Admin",
+    "staff_dashboard": "Panel de Personal",
+    "language": "Idioma",
+    "select_language": "Seleccionar Idioma",
+    "english": "Inglés",
+    "spanish": "Español",
+    "arabic": "Árabe"
+}

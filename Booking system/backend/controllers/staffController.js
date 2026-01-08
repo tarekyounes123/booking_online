@@ -1,4 +1,4 @@
-const { Staff, User, Branch, Appointment } = require('../models');
+const { Staff, User, Branch, Appointment, StaffSchedule } = require('../models');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 
@@ -220,5 +220,87 @@ exports.getStaffByBranch = asyncHandler(async (req, res, next) => {
     success: true,
     count: staff.length,
     data: staff
+  });
+});
+
+// @desc      Get staff schedule
+// @route     GET /api/staff/:id/schedule
+// @access    Private
+exports.getStaffSchedule = asyncHandler(async (req, res, next) => {
+  const staff = await Staff.findByPk(req.params.id);
+
+  if (!staff) {
+    return next(new ErrorResponse(`Staff member not found with id of ${req.params.id}`, 404));
+  }
+
+  const schedule = await StaffSchedule.findAll({
+    where: { staffId: req.params.id },
+    order: [['dayOfWeek', 'ASC']]
+  });
+
+  res.status(200).json({
+    success: true,
+    data: schedule
+  });
+});
+
+// @desc      Update staff schedule
+// @route     PUT /api/staff/:id/schedule
+// @access    Private (Admin or Staff member themselves)
+exports.updateStaffSchedule = asyncHandler(async (req, res, next) => {
+  const staff = await Staff.findByPk(req.params.id);
+
+  if (!staff) {
+    return next(new ErrorResponse(`Staff member not found with id of ${req.params.id}`, 404));
+  }
+
+  // Authorization: Admin or the staff member themselves
+  if (req.user.role !== 'admin' && req.user.id !== staff.userId) {
+    return next(new ErrorResponse('Not authorized to update this schedule', 401));
+  }
+
+  const { schedules } = req.body; // Expecting array of schedule objects
+
+  if (!schedules || !Array.isArray(schedules)) {
+    return next(new ErrorResponse('Please provide an array of schedules', 400));
+  }
+
+  const updatedSchedules = [];
+
+  // Transaction recommended for batch updates, but keeping simple for now
+  for (const item of schedules) {
+    const { dayOfWeek, startTime, endTime, isDayOff } = item;
+
+    // Find existing schedule for this day
+    let schedule = await StaffSchedule.findOne({
+      where: {
+        staffId: staff.id,
+        dayOfWeek: dayOfWeek
+      }
+    });
+
+    if (schedule) {
+      // Update existing
+      schedule = await schedule.update({
+        startTime: startTime || schedule.startTime,
+        endTime: endTime || schedule.endTime,
+        isDayOff: isDayOff !== undefined ? isDayOff : schedule.isDayOff
+      });
+    } else {
+      // Create new
+      schedule = await StaffSchedule.create({
+        staffId: staff.id,
+        dayOfWeek,
+        startTime: startTime || '09:00:00',
+        endTime: endTime || '18:00:00',
+        isDayOff: isDayOff || false
+      });
+    }
+    updatedSchedules.push(schedule);
+  }
+
+  res.status(200).json({
+    success: true,
+    data: updatedSchedules
   });
 });

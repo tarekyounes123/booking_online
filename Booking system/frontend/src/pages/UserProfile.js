@@ -9,8 +9,11 @@ import {
   TextField,
   Button,
   Alert,
-  Grid
+  Grid,
+  Tabs,
+  Tab
 } from '@mui/material';
+import MyBookings from './MyBookings';
 
 const UserProfile = () => {
   const { user } = useAuth();
@@ -101,131 +104,157 @@ const UserProfile = () => {
     }
   };
 
+  const [tabValue, setTabValue] = useState(0);
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Typography component="h1" variant="h4" gutterBottom>
-        User Profile
+        My Account
       </Typography>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Update Profile
-            </Typography>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={tabValue} onChange={handleTabChange}>
+          <Tab label="Profile Info" />
+          <Tab label="My Bookings" />
+        </Tabs>
+      </Box>
 
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-
-            {success && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                {success}
-              </Alert>
-            )}
-
-            <Box component="form" onSubmit={handleUpdateProfile}>
-              <TextField
-                fullWidth
-                margin="normal"
-                label="First Name"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleInputChange}
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Last Name"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleInputChange}
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Address"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                sx={{ mt: 2 }}
-                disabled={loading}
-              >
+      {tabValue === 0 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
                 Update Profile
-              </Button>
-            </Box>
-          </Paper>
-        </Grid>
+              </Typography>
 
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Change Password
-            </Typography>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
 
-            <Box component="form" onSubmit={handleUpdatePassword}>
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Current Password"
-                name="currentPassword"
-                type="password"
-                value={passwordData.currentPassword}
-                onChange={handlePasswordChange}
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                label="New Password"
-                name="newPassword"
-                type="password"
-                value={passwordData.newPassword}
-                onChange={handlePasswordChange}
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Confirm New Password"
-                name="confirmNewPassword"
-                type="password"
-                value={passwordData.confirmNewPassword}
-                onChange={handlePasswordChange}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                sx={{ mt: 2 }}
-                disabled={loading}
-              >
-                Update Password
-              </Button>
-            </Box>
-          </Paper>
+              {success && (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  {success}
+                </Alert>
+              )}
+
+              <Paper elevation={3} sx={{ p: 2, mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                <Typography variant="h6">Loyalty Program</Typography>
+                <Typography variant="h4" fontWeight="bold">
+                  {user?.loyaltyPoints || 0} pts
+                </Typography>
+                <Typography variant="body2">
+                  Earn points with every booking and redeem them for discounts!
+                </Typography>
+              </Paper>
+
+              <Box component="form" onSubmit={handleUpdateProfile}>
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="First Name"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                />
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Last Name"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                />
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                />
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                />
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  sx={{ mt: 2 }}
+                  disabled={loading}
+                >
+                  Update Profile
+                </Button>
+              </Box>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Change Password
+              </Typography>
+
+              <Box component="form" onSubmit={handleUpdatePassword}>
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Current Password"
+                  name="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                />
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="New Password"
+                  name="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                />
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Confirm New Password"
+                  name="confirmNewPassword"
+                  type="password"
+                  value={passwordData.confirmNewPassword}
+                  onChange={handlePasswordChange}
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  sx={{ mt: 2 }}
+                  disabled={loading}
+                >
+                  Update Password
+                </Button>
+              </Box>
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
+      )}
+
+      {tabValue === 1 && <MyBookings />}
     </Container>
   );
 };

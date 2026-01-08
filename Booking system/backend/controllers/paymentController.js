@@ -179,12 +179,26 @@ exports.createPayment = asyncHandler(async (req, res, next) => {
       currency: currency,
       paymentMethod: paymentMethod, // Use the requested payment method
       paymentIntentId: null, // No payment intent for Lebanon methods
-      status: paymentMethod === 'cash' ? 'completed' : 'pending' // Cash payments are completed immediately
+      status: paymentMethod === 'cash' ? 'completed' : 'pending', // Cash payments are completed immediately
+      paidAt: paymentMethod === 'cash' ? new Date() : null // Set paidAt for cash payments
     }, { transaction: t });
 
     // 3. If a promotion was used, increment its usage count
     if (promotion) {
       await promotion.increment('timesUsed', { by: 1, transaction: t });
+    }
+
+    // 4. ADD POINTS LOYALTY Logic - ONLY IF COMPLETED
+    // E.g., 1 point for every $1 spent
+    if (payment.status === 'completed') {
+      const pointsEarned = Math.floor(finalAmount);
+      if (pointsEarned > 0) {
+        const user = await User.findByPk(req.user.id);
+        if (user) {
+          await user.increment('loyaltyPoints', { by: pointsEarned, transaction: t });
+          await payment.update({ pointsAwarded: true }, { transaction: t });
+        }
+      }
     }
 
     // If everything is successful, commit the transaction
@@ -356,12 +370,42 @@ exports.updatePayment = asyncHandler(async (req, res, next) => {
     );
   }
 
-  await payment.update(updateData);
+  // Transaction for safe update
+  const t = await require('../models').sequelize.transaction();
 
-  res.status(200).json({
-    success: true,
-    data: payment
-  });
+  try {
+    const previousStatus = payment.status;
+
+    // If status is being changed to 'completed', set paidAt timestamp
+    if (updateData.status === 'completed' && previousStatus !== 'completed') {
+      updateData.paidAt = new Date();
+    }
+
+    await payment.update(updateData, { transaction: t });
+
+    // Check if status changed to 'completed' OR if it is completed but points weren't awarded yet
+    if (payment.status === 'completed' && !payment.pointsAwarded) {
+      // Award loyalty points now
+      const pointsEarned = Math.floor(payment.amount);
+      if (pointsEarned > 0) {
+        const user = await User.findByPk(payment.userId);
+        if (user) {
+          await user.increment('loyaltyPoints', { by: pointsEarned, transaction: t });
+          await payment.update({ pointsAwarded: true }, { transaction: t });
+        }
+      }
+    }
+
+    await t.commit();
+
+    res.status(200).json({
+      success: true,
+      data: payment
+    });
+  } catch (error) {
+    await t.rollback();
+    return next(new ErrorResponse(error.message, 500));
+  }
 });
 
 // @desc      Get payment receipt
@@ -416,7 +460,7 @@ exports.getPaymentReceipt = asyncHandler(async (req, res, next) => {
       startTime: payment.Appointment.startTime,
       endTime: payment.Appointment.endTime,
       service: payment.Appointment.Service ? payment.Appointment.Service.name : null,
-      staff: payment.Appointment.Staff ? 
+      staff: payment.Appointment.Staff ?
         `${payment.Appointment.Staff.User.firstName} ${payment.Appointment.Staff.User.lastName}` : null
     },
     user: {
@@ -429,4 +473,75 @@ exports.getPaymentReceipt = asyncHandler(async (req, res, next) => {
     success: true,
     data: receipt
   });
+});
+
+// @desc      Redeem loyalty points for discount
+// @route     POST /api/payments/redeem-points
+// @access    Private
+exports.redeemPoints = asyncHandler(async (req, res, next) => {
+  const { appointmentId, pointsToRedeem } = req.body;
+
+  if (!pointsToRedeem || pointsToRedeem <= 0) {
+    return next(new ErrorResponse('Please provide valid points to redeem', 400));
+  }
+
+  const appointment = await Appointment.findByPk(appointmentId, {
+    include: [{ model: Service, attributes: ['price'] }]
+  });
+
+  if (!appointment) {
+    return next(new ErrorResponse(`Appointment not found with id of ${appointmentId}`, 404));
+  }
+
+  // Verify ownership
+  if (req.user.role !== 'admin' && appointment.userId !== req.user.id) {
+    return next(new ErrorResponse(`User not authorized for this appointment`, 401));
+  }
+
+  const user = await User.findByPk(req.user.id);
+  if (user.loyaltyPoints < pointsToRedeem) {
+    return next(new ErrorResponse(`Insufficient loyalty points. You have ${user.loyaltyPoints}.`, 400));
+  }
+
+  const originalAmount = parseFloat(appointment.Service.price);
+
+  // Logic: 10 points = $1 discount (Example)
+  const discountAmount = pointsToRedeem / 10;
+
+  if (discountAmount > originalAmount) {
+    return next(new ErrorResponse(`Discount cannot exceed appointment price`, 400));
+  }
+
+  const finalAmount = originalAmount - discountAmount;
+
+  // Transaction
+  const t = await require('../models').sequelize.transaction();
+
+  try {
+    // Deduct points
+    await user.decrement('loyaltyPoints', { by: pointsToRedeem, transaction: t });
+
+    // Update appointment
+    await appointment.update({
+      originalPrice: originalAmount,
+      discountedPrice: finalAmount,
+      discountAmount: discountAmount,
+      promotionId: null // Clear promo if any, assuming exclusive
+    }, { transaction: t });
+
+    await t.commit();
+
+    res.status(200).json({
+      success: true,
+      originalAmount,
+      discountAmount,
+      finalAmount,
+      pointsRedeemed: pointsToRedeem,
+      remainingPoints: user.loyaltyPoints - pointsToRedeem
+    });
+
+  } catch (err) {
+    await t.rollback();
+    return next(new ErrorResponse('Redemption failed', 500));
+  }
 });

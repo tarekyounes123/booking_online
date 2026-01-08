@@ -31,6 +31,10 @@ fs
     db[model.name] = model;
   });
 
+db.StaffSchedule = require('./StaffSchedule')(sequelize, Sequelize.DataTypes);
+db.WaitingList = require('./WaitingList')(sequelize, Sequelize.DataTypes);
+db.ThemeSetting = require('./ThemeSetting')(sequelize, Sequelize.DataTypes);
+
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);

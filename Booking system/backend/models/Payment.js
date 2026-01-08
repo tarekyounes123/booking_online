@@ -65,6 +65,11 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 'pending',
       allowNull: false
     },
+    pointsAwarded: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
     paymentIntentId: {
       type: DataTypes.STRING, // For compatibility if needed
       allowNull: true

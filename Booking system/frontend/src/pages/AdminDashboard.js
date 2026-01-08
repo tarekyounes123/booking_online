@@ -6,68 +6,35 @@ import { appointmentAPI, userAPI, serviceAPI, staffAPI, paymentAPI, promotionAPI
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-   // ✅ PLACE THE STATE HERE (TOP OF COMPONENT)
+  // ✅ PLACE THE STATE HERE (TOP OF COMPONENT)
   const [openUserDetails, setOpenUserDetails] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [openServiceDetails, setOpenServiceDetails] = useState(false);
-const [selectedService, setSelectedService] = useState(null);
-const [openNewServiceDialog, setOpenNewServiceDialog] = useState(false);
-const [newServiceData, setNewServiceData] = useState({
-  name: "",
-  price: "",
-  duration: "",
-  category: "",
-  description: "",
-  imageFile: null
-});
-const [openStaffDetails, setOpenStaffDetails] = useState(false);
-const [selectedStaff, setSelectedStaff] = useState(null);
-const [openNewStaffDialog, setOpenNewStaffDialog] = useState(false);
-const [newStaffData, setNewStaffData] = useState({
-  userId: "",
-  specialization: "",
-  experience: "",
-  bio: ""
-});
-const [openPaymentDetails, setOpenPaymentDetails] = useState(false);
-const [selectedPayment, setSelectedPayment] = useState(null);
+  const [selectedService, setSelectedService] = useState(null);
+  const [openNewServiceDialog, setOpenNewServiceDialog] = useState(false);
+  const [newServiceData, setNewServiceData] = useState({
+    name: "",
+    price: "",
+    duration: "",
+    category: "",
+    description: "",
+    imageFile: null
+  });
+  const [openStaffDetails, setOpenStaffDetails] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [openNewStaffDialog, setOpenNewStaffDialog] = useState(false);
+  const [newStaffData, setNewStaffData] = useState({
+    userId: "",
+    specialization: "",
+    experience: "",
+    bio: ""
+  });
+  const [openPaymentDetails, setOpenPaymentDetails] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState(null);
 
-// Promotions state and handlers
-const [openNewPromotionDialog, setOpenNewPromotionDialog] = useState(false);
-const [newPromotionData, setNewPromotionData] = useState({
-  code: '',
-  description: '',
-  discountType: 'percentage',
-  discountValue: '',
-  startDate: '',
-  endDate: '',
-  usageLimit: ''
-});
-const [openEditPromotionDialog, setOpenEditPromotionDialog] = useState(false);
-const [selectedPromotion, setSelectedPromotion] = useState(null);
-
-// Category Management State
-const [openNewCategoryDialog, setOpenNewCategoryDialog] = useState(false);
-const [openEditCategoryDialog, setOpenEditCategoryDialog] = useState(false);
-const [newCategoryData, setNewCategoryData] = useState({
-  name: '',
-  description: '',
-  isActive: true
-});
-const [editCategoryData, setEditCategoryData] = useState({
-  name: '',
-  description: '',
-  isActive: true
-});
-const [selectedCategory, setSelectedCategory] = useState(null);
-
-// Additional state for advanced features
-const [searchTerm, setSearchTerm] = useState('');
-const [dateRange, setDateRange] = useState({ start: '', end: '' });
-const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
-
-const handleOpenNewPromotionDialog = () => {
-  setNewPromotionData({
+  // Promotions state and handlers
+  const [openNewPromotionDialog, setOpenNewPromotionDialog] = useState(false);
+  const [newPromotionData, setNewPromotionData] = useState({
     code: '',
     description: '',
     discountType: 'percentage',
@@ -76,488 +43,521 @@ const handleOpenNewPromotionDialog = () => {
     endDate: '',
     usageLimit: ''
   });
-  setOpenNewPromotionDialog(true);
-};
+  const [openEditPromotionDialog, setOpenEditPromotionDialog] = useState(false);
+  const [selectedPromotion, setSelectedPromotion] = useState(null);
 
-const handleOpenNewCategoryDialog = () => {
-  setNewCategoryData({
+  // Category Management State
+  const [openNewCategoryDialog, setOpenNewCategoryDialog] = useState(false);
+  const [openEditCategoryDialog, setOpenEditCategoryDialog] = useState(false);
+  const [newCategoryData, setNewCategoryData] = useState({
     name: '',
     description: '',
     isActive: true
   });
-  setOpenNewCategoryDialog(true);
-};
-
-const handleCloseNewCategoryDialog = () => {
-  setOpenNewCategoryDialog(false);
-  setNewCategoryData({
+  const [editCategoryData, setEditCategoryData] = useState({
     name: '',
     description: '',
     isActive: true
   });
-};
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
-const handleCreateCategoryFromPromotion = async () => {
-  try {
-    const res = await categoryAPI.createCategory(newCategoryData);
-    setCategories([res.data.data, ...categories]);
-    setFilteredCategories([res.data.data, ...filteredCategories]);
-    handleCloseNewCategoryDialog();
-  } catch (error) {
-    console.error('Error creating category:', error);
-    alert('Failed to create category: ' + (error.response?.data?.error || error.message));
-  }
-};
+  // Additional state for advanced features
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
 
-const handleOpenEditCategoryDialog = (category) => {
-  setSelectedCategory(category);
-  setEditCategoryData({
-    name: category.name,
-    description: category.description || '',
-    isActive: category.isActive
-  });
-  setOpenEditCategoryDialog(true);
-};
+  const handleOpenNewPromotionDialog = () => {
+    setNewPromotionData({
+      code: '',
+      description: '',
+      discountType: 'percentage',
+      discountValue: '',
+      startDate: '',
+      endDate: '',
+      usageLimit: ''
+    });
+    setOpenNewPromotionDialog(true);
+  };
 
-const handleCloseEditCategoryDialog = () => {
-  setOpenEditCategoryDialog(false);
-  setSelectedCategory(null);
-  setEditCategoryData({
-    name: '',
-    description: '',
-    isActive: true
-  });
-};
+  const handleOpenNewCategoryDialog = () => {
+    setNewCategoryData({
+      name: '',
+      description: '',
+      isActive: true
+    });
+    setOpenNewCategoryDialog(true);
+  };
 
-const handleUpdateCategoryFromPromotion = async () => {
-  if (!selectedCategory) return;
-  try {
-    const res = await categoryAPI.updateCategory(selectedCategory.id, editCategoryData);
-    setCategories(categories.map(cat => cat.id === selectedCategory.id ? res.data.data : cat));
-    setFilteredCategories(filteredCategories.map(cat => cat.id === selectedCategory.id ? res.data.data : cat));
-    handleCloseEditCategoryDialog();
-  } catch (error) {
-    console.error('Error updating category:', error);
-    alert('Failed to update category: ' + (error.response?.data?.error || error.message));
-  }
-};
-
-const handleDeleteCategoryFromPromotion = async (id) => {
-  if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
-    try {
-      await categoryAPI.deleteCategory(id);
-      setCategories(categories.filter(cat => cat.id !== id));
-      setFilteredCategories(filteredCategories.filter(cat => cat.id !== id));
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      alert('Failed to delete category: ' + (error.response?.data?.error || error.message));
-    }
-  }
-};
-
-const handleCloseNewPromotionDialog = () => {
-  setOpenNewPromotionDialog(false);
-};
-
-const handleCreatePromotion = async () => {
-  try {
-    const res = await promotionAPI.createPromotion(newPromotionData);
-    setPromotions([res.data.data, ...promotions]);
-    handleCloseNewPromotionDialog();
-  } catch (error) {
-    console.error('Error creating promotion:', error);
-    alert('Failed to create promotion.');
-  }
-};
-
-const handleOpenEditPromotionDialog = (promo) => {
-  setSelectedPromotion({
-    ...promo,
-    startDate: new Date(promo.startDate).toISOString().split('T')[0],
-    endDate: new Date(promo.endDate).toISOString().split('T')[0]
-  });
-  setOpenEditPromotionDialog(true);
-};
-
-const handleCloseEditPromotionDialog = () => {
-  setOpenEditPromotionDialog(false);
-  setSelectedPromotion(null);
-};
-
-const handleUpdatePromotion = async () => {
-  if (!selectedPromotion) return;
-  try {
-    const res = await promotionAPI.updatePromotion(selectedPromotion.id, selectedPromotion);
-    setPromotions(promotions.map(p => p.id === selectedPromotion.id ? res.data.data : p));
-    handleCloseEditPromotionDialog();
-  } catch (error) {
-    console.error('Error updating promotion:', error);
-    alert('Failed to update promotion.');
-  }
-};
-
-const handleViewUserDetails = (user) => {
-  setSelectedUser(user);
-  setOpenUserDetails(true);
-};
-
-const handleCloseUserDetails = () => {
-  setOpenUserDetails(false);
-  setSelectedUser(null);
-};
-
-const handleDeletePromotion = async (id) => {
-  if (window.confirm('Are you sure you want to delete this promotion?')) {
-    try {
-      await promotionAPI.deletePromotion(id);
-      setPromotions(promotions.filter(p => p.id !== id));
-    } catch (error) {
-      console.error('Error deleting promotion:', error);
-      alert('Failed to delete promotion.');
-    }
-  }
-};
-
-// Category Management Handlers
-const handleCreateCategory = async () => {
-  try {
-    const res = await categoryAPI.createCategory(newCategoryData);
-    setCategories([res.data.data, ...categories]);
+  const handleCloseNewCategoryDialog = () => {
     setOpenNewCategoryDialog(false);
-    setNewCategoryData({ name: '', description: '', isActive: true });
-  } catch (error) {
-    console.error('Error creating category:', error);
-    alert('Failed to create category: ' + (error.response?.data?.error || error.message));
-  }
-};
+    setNewCategoryData({
+      name: '',
+      description: '',
+      isActive: true
+    });
+  };
 
-const handleUpdateCategory = async () => {
-  if (!selectedCategory) return;
-  try {
-    const res = await categoryAPI.updateCategory(selectedCategory.id, editCategoryData);
-    setCategories(categories.map(c => c.id === selectedCategory.id ? res.data.data : c));
+  const handleCreateCategoryFromPromotion = async () => {
+    try {
+      const res = await categoryAPI.createCategory(newCategoryData);
+      setCategories([res.data.data, ...categories]);
+      setFilteredCategories([res.data.data, ...filteredCategories]);
+      handleCloseNewCategoryDialog();
+    } catch (error) {
+      console.error('Error creating category:', error);
+      alert('Failed to create category: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleOpenEditCategoryDialog = (category) => {
+    setSelectedCategory(category);
+    setEditCategoryData({
+      name: category.name,
+      description: category.description || '',
+      isActive: category.isActive
+    });
+    setOpenEditCategoryDialog(true);
+  };
+
+  const handleCloseEditCategoryDialog = () => {
     setOpenEditCategoryDialog(false);
     setSelectedCategory(null);
-  } catch (error) {
-    console.error('Error updating category:', error);
-    alert('Failed to update category: ' + (error.response?.data?.error || error.message));
-  }
-};
+    setEditCategoryData({
+      name: '',
+      description: '',
+      isActive: true
+    });
+  };
 
-const handleDeleteCategory = async (id) => {
-  if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+  const handleUpdateCategoryFromPromotion = async () => {
+    if (!selectedCategory) return;
     try {
-      await categoryAPI.deleteCategory(id);
-      setCategories(categories.filter(c => c.id !== id));
+      const res = await categoryAPI.updateCategory(selectedCategory.id, editCategoryData);
+      setCategories(categories.map(cat => cat.id === selectedCategory.id ? res.data.data : cat));
+      setFilteredCategories(filteredCategories.map(cat => cat.id === selectedCategory.id ? res.data.data : cat));
+      handleCloseEditCategoryDialog();
     } catch (error) {
-      console.error('Error deleting category:', error);
-      alert('Failed to delete category: ' + (error.response?.data?.error || error.message));
+      console.error('Error updating category:', error);
+      alert('Failed to update category: ' + (error.response?.data?.error || error.message));
     }
-  }
-};
+  };
 
-const handleOpenNewServiceDialog = () => {
-  setNewServiceData({ name: "", price: "", duration: "", category: "", description: "", imageFile: null });
-  setOpenNewServiceDialog(true);
-};
-
-const handleCloseNewServiceDialog = () => {
-  setOpenNewServiceDialog(false);
-};
-
-    // ✅ HANDLERS ALSO HERE
-    //create service
-    const handleCreateService = async (newService) => {
-  try {
-    // Create a clean service object for creation
-    const serviceToCreate = {
-      name: newService.name,
-      description: newService.description,
-      duration: newService.duration,
-      price: newService.price,
-      category: newService.category,
-      isActive: newService.isActive,
-      branchId: newService.branchId
-    };
-
-    // Only add imageFile if one was selected
-    if (newService.imageFile) {
-      serviceToCreate.imageFile = newService.imageFile;
-    }
-
-    const response = await serviceAPI.createService(serviceToCreate); // call API
-    const createdService = response.data; // assuming API returns the created service
-
-    setServices((prev) => [createdService, ...prev]); // add to state
-    alert("Service created successfully!");
-  } catch (error) {
-    console.error("Failed to create service:", error);
-    alert("Failed to create service: " + (error.response?.data?.message || error.message));
-  }
-};
-    // Open service dialog
-const handleViewServiceDetails = (service) => {
-  setSelectedService({ ...service, imageFile: null });
-  setOpenServiceDetails(true);
-};
-
-// Close service dialog
-const handleCloseServiceDetails = () => {
-  setOpenServiceDetails(false);
-  setSelectedService(null);
-};
-
-// Update service
-const handleEditService = async (updatedService) => {
-  try {
-    // Create a clean service object without the original image URL (only include fields to update)
-    const serviceToUpdate = {
-      id: updatedService.id,
-      name: updatedService.name,
-      description: updatedService.description,
-      duration: updatedService.duration,
-      price: updatedService.price,
-      category: updatedService.category,
-      isActive: updatedService.isActive,
-      branchId: updatedService.branchId
-    };
-
-    // Only add imageFile if a new image was selected
-    if (updatedService.imageFile) {
-      serviceToUpdate.imageFile = updatedService.imageFile;
-    }
-
-    await serviceAPI.updateService(updatedService.id, serviceToUpdate); // call API
-
-    setServices((prev) =>
-      prev.map((s) => (s.id === updatedService.id ? updatedService : s))
-    );
-
-    setSelectedService(updatedService);
-    alert("Service updated successfully!");
-  } catch (error) {
-    console.error("Failed to update service:", error);
-    alert("Failed to update service in database: " + (error.response?.data?.message || error.message));
-  }
-};
-
-// Delete service
-const handleDeleteService = async (serviceId) => {
-  if (!window.confirm("Are you sure you want to delete this service?")) return;
-
-  try {
-    await serviceAPI.deleteService(serviceId); // call API
-
-    setServices((prev) => prev.filter((s) => s.id !== serviceId));
-
-    setOpenServiceDetails(false);
-    setSelectedService(null);
-  } catch (error) {
-    console.error("Failed to delete service:", error);
-    alert("Failed to delete service");
-  }
-};
-
-// Drag and drop handler for services
-const onDragEnd = async (result) => {
-  if (!result.destination) return;
-
-  const items = Array.from(filteredServices);
-  const [reorderedItem] = items.splice(result.source.index, 1);
-  items.splice(result.destination.index, 0, reorderedItem);
-
-  // Update the state with the new order
-  setFilteredServices(items);
-  setServices(prev => {
-    // Update the main services state to reflect the new order
-    const updatedServices = [...prev];
-    const serviceIndex = updatedServices.findIndex(s => s.id === reorderedItem.id);
-    if (serviceIndex !== -1) {
-      updatedServices[serviceIndex] = { ...updatedServices[serviceIndex], position: result.destination.index };
-    }
-    return updatedServices;
-  });
-
-  // Update the service position in the database
-  try {
-    await serviceAPI.updateService(reorderedItem.id, { position: result.destination.index });
-  } catch (error) {
-    console.error("Failed to update service position:", error);
-    // If the update fails, revert the UI changes
-    setFilteredServices(prev => {
-      const revertedItems = Array.from(prev);
-      const [movedItem] = revertedItems.splice(result.destination.index, 1);
-      revertedItems.splice(result.source.index, 0, movedItem);
-      return revertedItems;
-    });
-    setServices(prev => {
-      const revertedServices = [...prev];
-      const serviceIndex = revertedServices.findIndex(s => s.id === reorderedItem.id);
-      if (serviceIndex !== -1) {
-        revertedServices[serviceIndex] = { ...revertedServices[serviceIndex], position: result.source.index };
+  const handleDeleteCategoryFromPromotion = async (id) => {
+    if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+      try {
+        await categoryAPI.deleteCategory(id);
+        setCategories(categories.filter(cat => cat.id !== id));
+        setFilteredCategories(filteredCategories.filter(cat => cat.id !== id));
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        alert('Failed to delete category: ' + (error.response?.data?.error || error.message));
       }
-      return revertedServices;
+    }
+  };
+
+  const handleCloseNewPromotionDialog = () => {
+    setOpenNewPromotionDialog(false);
+  };
+
+  const handleCreatePromotion = async () => {
+    try {
+      const res = await promotionAPI.createPromotion(newPromotionData);
+      setPromotions([res.data.data, ...promotions]);
+      handleCloseNewPromotionDialog();
+    } catch (error) {
+      console.error('Error creating promotion:', error);
+      alert('Failed to create promotion.');
+    }
+  };
+
+  const handleOpenEditPromotionDialog = (promo) => {
+    setSelectedPromotion({
+      ...promo,
+      startDate: new Date(promo.startDate).toISOString().split('T')[0],
+      endDate: new Date(promo.endDate).toISOString().split('T')[0]
     });
-    alert("Failed to update service position in database");
-  }
-};
+    setOpenEditPromotionDialog(true);
+  };
 
-// Staff handlers
-const handleOpenNewStaffDialog = () => {
-  setNewStaffData({ userId: "", specialization: "", experience: "", bio: "" });
-  setOpenNewStaffDialog(true);
-};
+  const handleCloseEditPromotionDialog = () => {
+    setOpenEditPromotionDialog(false);
+    setSelectedPromotion(null);
+  };
 
-const handleCloseNewStaffDialog = () => {
-  setOpenNewStaffDialog(false);
-};
+  const handleUpdatePromotion = async () => {
+    if (!selectedPromotion) return;
+    try {
+      const res = await promotionAPI.updatePromotion(selectedPromotion.id, selectedPromotion);
+      setPromotions(promotions.map(p => p.id === selectedPromotion.id ? res.data.data : p));
+      handleCloseEditPromotionDialog();
+    } catch (error) {
+      console.error('Error updating promotion:', error);
+      alert('Failed to update promotion.');
+    }
+  };
 
-const handleCreateStaff = async (newStaff) => {
-  try {
-    const response = await staffAPI.createStaff(newStaff);
-    const createdStaff = response.data;
+  const handleViewUserDetails = (user) => {
+    setSelectedUser(user);
+    setOpenUserDetails(true);
+  };
 
-    setStaff((prev) => [createdStaff, ...prev]);
-    alert("Staff member created successfully!");
-  } catch (error) {
-    console.error("Failed to create staff:", error);
-    alert("Failed to create staff member");
-  }
-};
-
-const handleViewStaffDetails = (staff) => {
-  setSelectedStaff(staff);
-  setOpenStaffDetails(true);
-};
-
-const handleCloseStaffDetails = () => {
-  setOpenStaffDetails(false);
-  setSelectedStaff(null);
-};
-
-const handleEditStaff = async (updatedStaff) => {
-  try {
-    await staffAPI.updateStaff(updatedStaff.id, updatedStaff);
-
-    setStaff((prev) =>
-      prev.map((s) => (s.id === updatedStaff.id ? updatedStaff : s))
-    );
-
-    setSelectedStaff(updatedStaff);
-    alert("Staff member updated successfully!");
-  } catch (error) {
-    console.error("Failed to update staff:", error);
-    alert("Failed to update staff member in database");
-  }
-};
-
-const handleDeleteStaff = async (staffId) => {
-  if (!window.confirm("Are you sure you want to delete this staff member?")) return;
-
-  try {
-    await staffAPI.deleteStaff(staffId);
-
-    setStaff((prev) => prev.filter((s) => s.id !== staffId));
-
-    setOpenStaffDetails(false);
-    setSelectedStaff(null);
-  } catch (error) {
-    console.error("Failed to delete staff:", error);
-    alert("Failed to delete staff member");
-  }
-};
-
-    // Open user details
-const handleViewUserDetailsDuplicate = (user) => {
-  setSelectedUser(user);
-  setOpenUserDetails(true);
-};
-
-// Close user details
-const handleCloseUserDetailsDuplicate = () => {
-  setOpenUserDetails(false);
-  setSelectedUser(null);
-};
-
-// Update user
-const handleEditUser = async (updatedUser) => {
-  try {
-    await userAPI.updateUser(updatedUser.id, updatedUser); // call your API
-
-    setUsers((prev) =>
-      prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
-    );
-
-    setSelectedUser(updatedUser);
-    alert("User updated successfully!");
-  } catch (error) {
-    console.error("Failed to update user:", error);
-    const errorMessage = error.response?.data?.message || error.message || "Failed to update user in database";
-    alert(`Failed to update user: ${errorMessage}`);
-  }
-};
-
-// Delete user
-const handleDeleteUser = async (userId) => {
-  if (!window.confirm("Are you sure you want to delete this user?")) return;
-
-  try {
-    await userAPI.deleteUser(userId); // call your API
-
-    setUsers((prev) => prev.filter((u) => u.id !== userId));
-
+  const handleCloseUserDetails = () => {
     setOpenUserDetails(false);
     setSelectedUser(null);
-  } catch (error) {
-    console.error("Failed to delete user:", error);
-    alert("Failed to delete user");
-  }
-};
+  };
 
-// Payment handlers
-const handleViewPaymentDetails = (payment) => {
-  setSelectedPayment(payment);
-  setOpenPaymentDetails(true);
-};
+  const handleDeletePromotion = async (id) => {
+    if (window.confirm('Are you sure you want to delete this promotion?')) {
+      try {
+        await promotionAPI.deletePromotion(id);
+        setPromotions(promotions.filter(p => p.id !== id));
+      } catch (error) {
+        console.error('Error deleting promotion:', error);
+        alert('Failed to delete promotion.');
+      }
+    }
+  };
 
-const handleClosePaymentDetails = () => {
-  setOpenPaymentDetails(false);
-  setSelectedPayment(null);
-};
+  // Category Management Handlers
+  const handleCreateCategory = async () => {
+    try {
+      const res = await categoryAPI.createCategory(newCategoryData);
+      setCategories([res.data.data, ...categories]);
+      setOpenNewCategoryDialog(false);
+      setNewCategoryData({ name: '', description: '', isActive: true });
+    } catch (error) {
+      console.error('Error creating category:', error);
+      alert('Failed to create category: ' + (error.response?.data?.error || error.message));
+    }
+  };
 
-const handleEditPayment = async (updatedPayment) => {
-  try {
-    // Note: The payment API doesn't have update method, so we'll show a message
-    alert("Payment update functionality would be implemented in the backend");
-    // For now, we'll just update the local state
-    setPayments((prev) =>
-      prev.map((p) => (p.id === updatedPayment.id ? updatedPayment : p))
-    );
+  const handleUpdateCategory = async () => {
+    if (!selectedCategory) return;
+    try {
+      const res = await categoryAPI.updateCategory(selectedCategory.id, editCategoryData);
+      setCategories(categories.map(c => c.id === selectedCategory.id ? res.data.data : c));
+      setOpenEditCategoryDialog(false);
+      setSelectedCategory(null);
+    } catch (error) {
+      console.error('Error updating category:', error);
+      alert('Failed to update category: ' + (error.response?.data?.error || error.message));
+    }
+  };
 
-    setSelectedPayment(updatedPayment);
-    alert("Payment updated successfully!");
-  } catch (error) {
-    console.error("Failed to update payment:", error);
-    alert("Failed to update payment in database");
-  }
-};
+  const handleDeleteCategory = async (id) => {
+    if (window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+      try {
+        await categoryAPI.deleteCategory(id);
+        setCategories(categories.filter(c => c.id !== id));
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        alert('Failed to delete category: ' + (error.response?.data?.error || error.message));
+      }
+    }
+  };
 
-const handleDeletePayment = async (paymentId) => {
-  if (!window.confirm("Are you sure you want to delete this payment?")) return;
+  const handleOpenNewServiceDialog = () => {
+    setNewServiceData({ name: "", price: "", duration: "", category: "", description: "", imageFile: null });
+    setOpenNewServiceDialog(true);
+  };
 
-  try {
-    // Note: The payment API doesn't have delete method, so we'll show a message
-    alert("Payment delete functionality would be implemented in the backend");
-    // For now, we'll just update the local state
-    setPayments((prev) => prev.filter((p) => p.id !== paymentId));
+  const handleCloseNewServiceDialog = () => {
+    setOpenNewServiceDialog(false);
+  };
 
+  // ✅ HANDLERS ALSO HERE
+  //create service
+  const handleCreateService = async (newService) => {
+    try {
+      // Create a clean service object for creation
+      const serviceToCreate = {
+        name: newService.name,
+        description: newService.description,
+        duration: newService.duration,
+        price: newService.price,
+        category: newService.category,
+        isActive: newService.isActive,
+        branchId: newService.branchId
+      };
+
+      // Only add imageFile if one was selected
+      if (newService.imageFile) {
+        serviceToCreate.imageFile = newService.imageFile;
+      }
+
+      const response = await serviceAPI.createService(serviceToCreate); // call API
+      const createdService = response.data; // assuming API returns the created service
+
+      setServices((prev) => [createdService, ...prev]); // add to state
+      alert("Service created successfully!");
+    } catch (error) {
+      console.error("Failed to create service:", error);
+      alert("Failed to create service: " + (error.response?.data?.message || error.message));
+    }
+  };
+  // Open service dialog
+  const handleViewServiceDetails = (service) => {
+    setSelectedService({ ...service, imageFile: null });
+    setOpenServiceDetails(true);
+  };
+
+  // Close service dialog
+  const handleCloseServiceDetails = () => {
+    setOpenServiceDetails(false);
+    setSelectedService(null);
+  };
+
+  // Update service
+  const handleEditService = async (updatedService) => {
+    try {
+      // Create a clean service object without the original image URL (only include fields to update)
+      const serviceToUpdate = {
+        id: updatedService.id,
+        name: updatedService.name,
+        description: updatedService.description,
+        duration: updatedService.duration,
+        price: updatedService.price,
+        category: updatedService.category,
+        isActive: updatedService.isActive,
+        branchId: updatedService.branchId
+      };
+
+      // Only add imageFile if a new image was selected
+      if (updatedService.imageFile) {
+        serviceToUpdate.imageFile = updatedService.imageFile;
+      }
+
+      await serviceAPI.updateService(updatedService.id, serviceToUpdate); // call API
+
+      setServices((prev) =>
+        prev.map((s) => (s.id === updatedService.id ? updatedService : s))
+      );
+
+      setSelectedService(updatedService);
+      alert("Service updated successfully!");
+    } catch (error) {
+      console.error("Failed to update service:", error);
+      alert("Failed to update service in database: " + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Delete service
+  const handleDeleteService = async (serviceId) => {
+    if (!window.confirm("Are you sure you want to delete this service?")) return;
+
+    try {
+      await serviceAPI.deleteService(serviceId); // call API
+
+      setServices((prev) => prev.filter((s) => s.id !== serviceId));
+
+      setOpenServiceDetails(false);
+      setSelectedService(null);
+    } catch (error) {
+      console.error("Failed to delete service:", error);
+      alert("Failed to delete service");
+    }
+  };
+
+  // Drag and drop handler for services
+  const onDragEnd = async (result) => {
+    if (!result.destination) return;
+
+    const items = Array.from(filteredServices);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Update the state with the new order
+    setFilteredServices(items);
+    setServices(prev => {
+      // Update the main services state to reflect the new order
+      const updatedServices = [...prev];
+      const serviceIndex = updatedServices.findIndex(s => s.id === reorderedItem.id);
+      if (serviceIndex !== -1) {
+        updatedServices[serviceIndex] = { ...updatedServices[serviceIndex], position: result.destination.index };
+      }
+      return updatedServices;
+    });
+
+    // Update the service position in the database
+    try {
+      await serviceAPI.updateService(reorderedItem.id, { position: result.destination.index });
+    } catch (error) {
+      console.error("Failed to update service position:", error);
+      // If the update fails, revert the UI changes
+      setFilteredServices(prev => {
+        const revertedItems = Array.from(prev);
+        const [movedItem] = revertedItems.splice(result.destination.index, 1);
+        revertedItems.splice(result.source.index, 0, movedItem);
+        return revertedItems;
+      });
+      setServices(prev => {
+        const revertedServices = [...prev];
+        const serviceIndex = revertedServices.findIndex(s => s.id === reorderedItem.id);
+        if (serviceIndex !== -1) {
+          revertedServices[serviceIndex] = { ...revertedServices[serviceIndex], position: result.source.index };
+        }
+        return revertedServices;
+      });
+      alert("Failed to update service position in database");
+    }
+  };
+
+  // Staff handlers
+  const handleOpenNewStaffDialog = () => {
+    setNewStaffData({ userId: "", specialization: "", experience: "", bio: "" });
+    setOpenNewStaffDialog(true);
+  };
+
+  const handleCloseNewStaffDialog = () => {
+    setOpenNewStaffDialog(false);
+  };
+
+  const handleCreateStaff = async (newStaff) => {
+    try {
+      const response = await staffAPI.createStaff(newStaff);
+      const createdStaff = response.data;
+
+      setStaff((prev) => [createdStaff, ...prev]);
+      alert("Staff member created successfully!");
+    } catch (error) {
+      console.error("Failed to create staff:", error);
+      alert("Failed to create staff member");
+    }
+  };
+
+  const handleViewStaffDetails = (staff) => {
+    setSelectedStaff(staff);
+    setOpenStaffDetails(true);
+  };
+
+  const handleCloseStaffDetails = () => {
+    setOpenStaffDetails(false);
+    setSelectedStaff(null);
+  };
+
+  const handleEditStaff = async (updatedStaff) => {
+    try {
+      await staffAPI.updateStaff(updatedStaff.id, updatedStaff);
+
+      setStaff((prev) =>
+        prev.map((s) => (s.id === updatedStaff.id ? updatedStaff : s))
+      );
+
+      setSelectedStaff(updatedStaff);
+      alert("Staff member updated successfully!");
+    } catch (error) {
+      console.error("Failed to update staff:", error);
+      alert("Failed to update staff member in database");
+    }
+  };
+
+  const handleDeleteStaff = async (staffId) => {
+    if (!window.confirm("Are you sure you want to delete this staff member?")) return;
+
+    try {
+      await staffAPI.deleteStaff(staffId);
+
+      setStaff((prev) => prev.filter((s) => s.id !== staffId));
+
+      setOpenStaffDetails(false);
+      setSelectedStaff(null);
+    } catch (error) {
+      console.error("Failed to delete staff:", error);
+      alert("Failed to delete staff member");
+    }
+  };
+
+  // Open user details
+  const handleViewUserDetailsDuplicate = (user) => {
+    setSelectedUser(user);
+    setOpenUserDetails(true);
+  };
+
+  // Close user details
+  const handleCloseUserDetailsDuplicate = () => {
+    setOpenUserDetails(false);
+    setSelectedUser(null);
+  };
+
+  // Update user
+  const handleEditUser = async (updatedUser) => {
+    try {
+      await userAPI.updateUser(updatedUser.id, updatedUser); // call your API
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+      );
+
+      setSelectedUser(updatedUser);
+      alert("User updated successfully!");
+    } catch (error) {
+      console.error("Failed to update user:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to update user in database";
+      alert(`Failed to update user: ${errorMessage}`);
+    }
+  };
+
+  // Delete user
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+
+    try {
+      await userAPI.deleteUser(userId); // call your API
+
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+
+      setOpenUserDetails(false);
+      setSelectedUser(null);
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      alert("Failed to delete user");
+    }
+  };
+
+  // Payment handlers
+  const handleViewPaymentDetails = (payment) => {
+    setSelectedPayment(payment);
+    setOpenPaymentDetails(true);
+  };
+
+  const handleClosePaymentDetails = () => {
     setOpenPaymentDetails(false);
     setSelectedPayment(null);
-  } catch (error) {
-    console.error("Failed to delete payment:", error);
-    alert("Failed to delete payment");
-  }
-};
+  };
+
+  const handleEditPayment = async (updatedPayment) => {
+    try {
+      // Note: The payment API doesn't have update method, so we'll show a message
+      alert("Payment update functionality would be implemented in the backend");
+      // For now, we'll just update the local state
+      setPayments((prev) =>
+        prev.map((p) => (p.id === updatedPayment.id ? updatedPayment : p))
+      );
+
+      setSelectedPayment(updatedPayment);
+      alert("Payment updated successfully!");
+    } catch (error) {
+      console.error("Failed to update payment:", error);
+      alert("Failed to update payment in database");
+    }
+  };
+
+  const handleDeletePayment = async (paymentId) => {
+    if (!window.confirm("Are you sure you want to delete this payment?")) return;
+
+    try {
+      // Note: The payment API doesn't have delete method, so we'll show a message
+      alert("Payment delete functionality would be implemented in the backend");
+      // For now, we'll just update the local state
+      setPayments((prev) => prev.filter((p) => p.id !== paymentId));
+
+      setOpenPaymentDetails(false);
+      setSelectedPayment(null);
+    } catch (error) {
+      console.error("Failed to delete payment:", error);
+      alert("Failed to delete payment");
+    }
+  };
 
   const [activeTab, setActiveTab] = useState(0);
   const [appointments, setAppointments] = useState([]);
@@ -631,16 +631,19 @@ const handleDeletePayment = async (paymentId) => {
       );
     }
 
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     // Apply date range filter
     if (dateRange.start) {
       filtered = filtered.filter(appointment =>
-        new Date(appointment.date) >= new Date(dateRange.start)
+        appointment.date >= dateRange.start
       );
     }
 
     if (dateRange.end) {
       filtered = filtered.filter(appointment =>
-        new Date(appointment.date) <= new Date(dateRange.end)
+        appointment.date <= dateRange.end
       );
     }
 
@@ -796,9 +799,12 @@ const handleDeletePayment = async (paymentId) => {
     setActiveTab(newValue);
   };
 
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
   const pendingAppointments = appointments.filter(appt => appt.status === 'pending');
-  const todayAppointments = appointments.filter(appt => 
-    new Date(appt.date).toDateString() === new Date().toDateString()
+  const todayAppointments = appointments.filter(appt =>
+    appt.date === todayStr
   );
   const revenue = payments
     .filter(payment => payment.status === 'completed')
@@ -924,6 +930,7 @@ const handleDeletePayment = async (paymentId) => {
           <Tab label="Calendar" />
           <Tab label="Webhooks" />
           <Tab label="API Docs" />
+          <Tab label="Theme" />
         </Tabs>
       </Paper>
 
@@ -1036,8 +1043,8 @@ const handleDeletePayment = async (paymentId) => {
                           label={appointment.status}
                           color={
                             appointment.status === 'completed' ? 'success' :
-                            appointment.status === 'pending' ? 'warning' :
-                            appointment.status === 'canceled' ? 'error' : 'default'
+                              appointment.status === 'pending' ? 'warning' :
+                                appointment.status === 'canceled' ? 'error' : 'default'
                           }
                           size="small"
                           sx={{ borderRadius: 2, ml: 1, mt: 0.5 }}
@@ -1323,67 +1330,67 @@ const handleDeletePayment = async (paymentId) => {
         </Paper>
       )}
       <Dialog
-  open={openUserDetails}
-  onClose={handleCloseUserDetails}
-  maxWidth="sm"
-  fullWidth
->
-  <DialogTitle>User Details</DialogTitle>
+        open={openUserDetails}
+        onClose={handleCloseUserDetails}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>User Details</DialogTitle>
 
-  <DialogContent dividers>
-    {selectedUser && (
-      <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <TextField
-          label="First Name"
-          value={selectedUser.firstName || ""}
-          onChange={(e) =>
-            setSelectedUser((prev) => ({ ...prev, firstName: e.target.value }))
-          }
-        />
-        <TextField
-          label="Last Name"
-          value={selectedUser.lastName || ""}
-          onChange={(e) =>
-            setSelectedUser((prev) => ({ ...prev, lastName: e.target.value }))
-          }
-        />
-        <TextField
-          label="Email"
-          type="email"
-          value={selectedUser.email || ""}
-          onChange={(e) =>
-            setSelectedUser((prev) => ({ ...prev, email: e.target.value }))
-          }
-        />
-        <FormControl fullWidth>
-          <InputLabel>Role</InputLabel>
-          <Select
-            value={selectedUser.role || ""}
-            onChange={(e) =>
-              setSelectedUser((prev) => ({ ...prev, role: e.target.value }))
-            }
-          >
-            <MenuItem value="customer">Customer</MenuItem>
-            <MenuItem value="admin">Admin</MenuItem>
-            <MenuItem value="staff">Staff</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
-    )}
-  </DialogContent>
+        <DialogContent dividers>
+          {selectedUser && (
+            <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="First Name"
+                value={selectedUser.firstName || ""}
+                onChange={(e) =>
+                  setSelectedUser((prev) => ({ ...prev, firstName: e.target.value }))
+                }
+              />
+              <TextField
+                label="Last Name"
+                value={selectedUser.lastName || ""}
+                onChange={(e) =>
+                  setSelectedUser((prev) => ({ ...prev, lastName: e.target.value }))
+                }
+              />
+              <TextField
+                label="Email"
+                type="email"
+                value={selectedUser.email || ""}
+                onChange={(e) =>
+                  setSelectedUser((prev) => ({ ...prev, email: e.target.value }))
+                }
+              />
+              <FormControl fullWidth>
+                <InputLabel>Role</InputLabel>
+                <Select
+                  value={selectedUser.role || ""}
+                  onChange={(e) =>
+                    setSelectedUser((prev) => ({ ...prev, role: e.target.value }))
+                  }
+                >
+                  <MenuItem value="customer">Customer</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                  <MenuItem value="staff">Staff</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          )}
+        </DialogContent>
 
-  <DialogActions>
-    <Button color="error" onClick={() => handleDeleteUser(selectedUser.id)}>
-      Delete
-    </Button>
+        <DialogActions>
+          <Button color="error" onClick={() => handleDeleteUser(selectedUser.id)}>
+            Delete
+          </Button>
 
-    <Button color="primary" onClick={() => handleEditUser(selectedUser)}>
-      Save
-    </Button>
+          <Button color="primary" onClick={() => handleEditUser(selectedUser)}>
+            Save
+          </Button>
 
-    <Button onClick={handleCloseUserDetails}>Close</Button>
-  </DialogActions>
-</Dialog>
+          <Button onClick={handleCloseUserDetails}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {activeTab === 2 && (
         <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 2 }}>
@@ -1456,7 +1463,7 @@ const handleDeletePayment = async (paymentId) => {
                                     {service.name}
                                   </Typography>
                                   <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
-                                    Description: {service.description}<br/>
+                                    Description: {service.description}<br />
                                     Price: ${service.price}<br />
                                     Duration: {service.duration} min<br />
                                     Category: {service.category}
@@ -1500,184 +1507,184 @@ const handleDeletePayment = async (paymentId) => {
           )}
         </Paper>
       )}
-    <Dialog
-  open={openNewServiceDialog}
-  onClose={handleCloseNewServiceDialog}
-  maxWidth="sm"
-  fullWidth
->
-  <DialogTitle>Add New Service</DialogTitle>
-  <DialogContent dividers>
-    <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <TextField
-        label="Service Name"
-        value={newServiceData.name}
-        onChange={(e) =>
-          setNewServiceData((prev) => ({ ...prev, name: e.target.value }))
-        }
-      />
-       <TextField
-        label="Service Description"
-        value={newServiceData.description}
-        onChange={(e) =>
-          setNewServiceData((prev) => ({ ...prev, description: e.target.value }))
-        }
-      />
-      <TextField
-        label="Price"
-        type="number"
-        value={newServiceData.price}
-        onChange={(e) =>
-          setNewServiceData((prev) => ({ ...prev, price: e.target.value }))
-        }
-      />
-      <TextField
-        label="Duration (minutes)"
-        type="number"
-        value={newServiceData.duration}
-        onChange={(e) =>
-          setNewServiceData((prev) => ({ ...prev, duration: e.target.value }))
-        }
-      />
-      <TextField
-        label="Category"
-        value={newServiceData.category}
-        onChange={(e) =>
-          setNewServiceData((prev) => ({ ...prev, category: e.target.value }))
-        }
-      />
-      <input
-        accept="image/*"
-        id="service-image-upload"
-        type="file"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const file = e.target.files[0];
-          if (file) {
-            // For now, we'll handle the file in the API call
-            setNewServiceData((prev) => ({ ...prev, imageFile: file }));
-          }
-        }}
-      />
-      <label htmlFor="service-image-upload">
-        <Button variant="outlined" component="span" fullWidth>
-          Upload Service Image
-        </Button>
-      </label>
-      {newServiceData.imageFile && (
-        <Typography variant="body2" color="text.secondary">
-          Selected: {newServiceData.imageFile.name}
-        </Typography>
-      )}
-    </Box>
-  </DialogContent>
-  <DialogActions>
-    <Button
-      color="primary"
-      onClick={() => {
-        handleCreateService(newServiceData);
-        handleCloseNewServiceDialog();
-      }}
-    >
-      Create
-    </Button>
-    <Button onClick={handleCloseNewServiceDialog}>Cancel</Button>
-  </DialogActions>
-</Dialog>
-
-{/* THIS IS THE NEW DIALOG FOR EDITING A SERVICE */}
-<Dialog
-  open={openServiceDetails}
-  onClose={handleCloseServiceDetails}
-  maxWidth="sm"
-  fullWidth
->
-  <DialogTitle>Edit Service</DialogTitle>
-  <DialogContent dividers>
-    {selectedService && (
-      <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <TextField
-          label="Service Name"
-          value={selectedService.name}
-          onChange={(e) =>
-            setSelectedService((prev) => ({ ...prev, name: e.target.value }))
-          }
-        />
-          <TextField
-          label="Service Description"
-          value={selectedService.description}
-          onChange={(e) =>
-            setSelectedService((prev) => ({ ...prev, description: e.target.value }))
-          }
-        />
-        <TextField
-          label="Price"
-          type="number"
-          value={selectedService.price}
-          onChange={(e) =>
-            setSelectedService((prev) => ({ ...prev, price: e.target.value }))
-          }
-        />
-        <TextField
-          label="Duration (minutes)"
-          type="number"
-          value={selectedService.duration}
-          onChange={(e) =>
-            setSelectedService((prev) => ({ ...prev, duration: e.target.value }))
-          }
-        />
-        <TextField
-          label="Category"
-          value={selectedService.category}
-          onChange={(e) =>
-            setSelectedService((prev) => ({ ...prev, category: e.target.value }))
-          }
-        />
-        <input
-          accept="image/*"
-          id="service-edit-image-upload"
-          type="file"
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const file = e.target.files[0];
-            if (file) {
-              // For now, we'll handle the file in the API call
-              setSelectedService((prev) => ({ ...prev, imageFile: file }));
-            }
-          }}
-        />
-        <label htmlFor="service-edit-image-upload">
-          <Button variant="outlined" component="span" fullWidth>
-            Upload New Image
-          </Button>
-        </label>
-        {selectedService.imageFile && (
-          <Typography variant="body2" color="text.secondary">
-            Selected: {selectedService.imageFile.name}
-          </Typography>
-        )}
-        {selectedService.image && !selectedService.imageFile && (
-          <Box sx={{ textAlign: 'center', mt: 2 }}>
-            <img
-              src={selectedService.image}
-              alt={selectedService.name}
-              style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }}
+      <Dialog
+        open={openNewServiceDialog}
+        onClose={handleCloseNewServiceDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Add New Service</DialogTitle>
+        <DialogContent dividers>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Service Name"
+              value={newServiceData.name}
+              onChange={(e) =>
+                setNewServiceData((prev) => ({ ...prev, name: e.target.value }))
+              }
             />
+            <TextField
+              label="Service Description"
+              value={newServiceData.description}
+              onChange={(e) =>
+                setNewServiceData((prev) => ({ ...prev, description: e.target.value }))
+              }
+            />
+            <TextField
+              label="Price"
+              type="number"
+              value={newServiceData.price}
+              onChange={(e) =>
+                setNewServiceData((prev) => ({ ...prev, price: e.target.value }))
+              }
+            />
+            <TextField
+              label="Duration (minutes)"
+              type="number"
+              value={newServiceData.duration}
+              onChange={(e) =>
+                setNewServiceData((prev) => ({ ...prev, duration: e.target.value }))
+              }
+            />
+            <TextField
+              label="Category"
+              value={newServiceData.category}
+              onChange={(e) =>
+                setNewServiceData((prev) => ({ ...prev, category: e.target.value }))
+              }
+            />
+            <input
+              accept="image/*"
+              id="service-image-upload"
+              type="file"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  // For now, we'll handle the file in the API call
+                  setNewServiceData((prev) => ({ ...prev, imageFile: file }));
+                }
+              }}
+            />
+            <label htmlFor="service-image-upload">
+              <Button variant="outlined" component="span" fullWidth>
+                Upload Service Image
+              </Button>
+            </label>
+            {newServiceData.imageFile && (
+              <Typography variant="body2" color="text.secondary">
+                Selected: {newServiceData.imageFile.name}
+              </Typography>
+            )}
           </Box>
-        )}
-      </Box>
-    )}
-  </DialogContent>
-  <DialogActions>
-    <Button color="error" onClick={() => handleDeleteService(selectedService.id)}>
-      Delete
-    </Button>
-    <Button color="primary" onClick={() => handleEditService(selectedService)}>
-      Save Changes
-    </Button>
-    <Button onClick={handleCloseServiceDetails}>Close</Button>
-  </DialogActions>
-</Dialog>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            color="primary"
+            onClick={() => {
+              handleCreateService(newServiceData);
+              handleCloseNewServiceDialog();
+            }}
+          >
+            Create
+          </Button>
+          <Button onClick={handleCloseNewServiceDialog}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* THIS IS THE NEW DIALOG FOR EDITING A SERVICE */}
+      <Dialog
+        open={openServiceDetails}
+        onClose={handleCloseServiceDetails}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Edit Service</DialogTitle>
+        <DialogContent dividers>
+          {selectedService && (
+            <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="Service Name"
+                value={selectedService.name}
+                onChange={(e) =>
+                  setSelectedService((prev) => ({ ...prev, name: e.target.value }))
+                }
+              />
+              <TextField
+                label="Service Description"
+                value={selectedService.description}
+                onChange={(e) =>
+                  setSelectedService((prev) => ({ ...prev, description: e.target.value }))
+                }
+              />
+              <TextField
+                label="Price"
+                type="number"
+                value={selectedService.price}
+                onChange={(e) =>
+                  setSelectedService((prev) => ({ ...prev, price: e.target.value }))
+                }
+              />
+              <TextField
+                label="Duration (minutes)"
+                type="number"
+                value={selectedService.duration}
+                onChange={(e) =>
+                  setSelectedService((prev) => ({ ...prev, duration: e.target.value }))
+                }
+              />
+              <TextField
+                label="Category"
+                value={selectedService.category}
+                onChange={(e) =>
+                  setSelectedService((prev) => ({ ...prev, category: e.target.value }))
+                }
+              />
+              <input
+                accept="image/*"
+                id="service-edit-image-upload"
+                type="file"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    // For now, we'll handle the file in the API call
+                    setSelectedService((prev) => ({ ...prev, imageFile: file }));
+                  }
+                }}
+              />
+              <label htmlFor="service-edit-image-upload">
+                <Button variant="outlined" component="span" fullWidth>
+                  Upload New Image
+                </Button>
+              </label>
+              {selectedService.imageFile && (
+                <Typography variant="body2" color="text.secondary">
+                  Selected: {selectedService.imageFile.name}
+                </Typography>
+              )}
+              {selectedService.image && !selectedService.imageFile && (
+                <Box sx={{ textAlign: 'center', mt: 2 }}>
+                  <img
+                    src={selectedService.image}
+                    alt={selectedService.name}
+                    style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }}
+                  />
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button color="error" onClick={() => handleDeleteService(selectedService.id)}>
+            Delete
+          </Button>
+          <Button color="primary" onClick={() => handleEditService(selectedService)}>
+            Save Changes
+          </Button>
+          <Button onClick={handleCloseServiceDetails}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
 
       {activeTab === 3 && (
@@ -1973,7 +1980,7 @@ const handleDeletePayment = async (paymentId) => {
                       <Typography color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
                         {promo.description}<br />
                         Discount: {promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue}`}<br />
-                        Valid: {new Date(promo.startDate).toLocaleDateString()} - {new Date(promo.endDate).toLocaleDateString()}<br/>
+                        Valid: {new Date(promo.startDate).toLocaleDateString()} - {new Date(promo.endDate).toLocaleDateString()}<br />
                         Usage: {promo.timesUsed} / {promo.usageLimit}
                       </Typography>
                     </Box>
@@ -2575,7 +2582,7 @@ const handleDeletePayment = async (paymentId) => {
               <TextField label="Start Date" type="date" value={selectedPromotion.startDate} onChange={(e) => setSelectedPromotion({ ...selectedPromotion, startDate: e.target.value })} InputLabelProps={{ shrink: true }} />
               <TextField label="End Date" type="date" value={selectedPromotion.endDate} onChange={(e) => setSelectedPromotion({ ...selectedPromotion, endDate: e.target.value })} InputLabelProps={{ shrink: true }} />
               <TextField label="Usage Limit" type="number" value={selectedPromotion.usageLimit} onChange={(e) => setSelectedPromotion({ ...selectedPromotion, usageLimit: e.target.value })} />
-               <FormControl fullWidth>
+              <FormControl fullWidth>
                 <InputLabel>Is Active</InputLabel>
                 <Select value={selectedPromotion.isActive} label="Is Active" onChange={(e) => setSelectedPromotion({ ...selectedPromotion, isActive: e.target.value })}>
                   <MenuItem value={true}>Yes</MenuItem>
@@ -2635,6 +2642,33 @@ const handleDeletePayment = async (paymentId) => {
           <Button onClick={handleClosePaymentDetails}>Close</Button>
         </DialogActions>
       </Dialog>
+      {activeTab === 12 && (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" gutterBottom>API Documentation</Typography>
+          <Button variant="contained" onClick={() => navigate('/api-docs')}>
+            View API Documentation
+          </Button>
+        </Box>
+      )}
+
+      {activeTab === 13 && (
+        <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2, textAlign: 'center' }}>
+          <Typography variant="h5" gutterBottom className="fw-bold">
+            Theme Customization
+          </Typography>
+          <Typography variant="body1" color="text.secondary" paragraph>
+            Customize the look and feel of your booking system, including colors, fonts, and shapes.
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => navigate('/admin/theme')}
+            sx={{ mt: 2 }}
+          >
+            Manage Theme Settings
+          </Button>
+        </Paper>
+      )}
     </Container>
   );
 };

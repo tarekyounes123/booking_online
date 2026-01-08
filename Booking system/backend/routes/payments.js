@@ -4,7 +4,8 @@ const {
   getPayment,
   getPayments,
   updatePayment,
-  getPaymentReceipt
+  getPaymentReceipt,
+  redeemPoints
 } = require('../controllers/paymentController');
 const { protect } = require('../middleware/auth');
 const { validate, validatePayment } = require('../middleware/validation');
@@ -14,6 +15,10 @@ const router = express.Router();
 router
   .route('/apply-promotion')
   .post(protect, validate(validatePayment), applyPromotion);
+
+router
+  .route('/redeem-points')
+  .post(protect, redeemPoints);
 
 
 router

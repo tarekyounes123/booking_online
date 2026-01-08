@@ -83,6 +83,15 @@ module.exports = (sequelize, DataTypes) => {
     position: {
       type: DataTypes.INTEGER,
       defaultValue: 0
+    },
+    type: {
+      type: DataTypes.ENUM('single', 'bundle'),
+      defaultValue: 'single',
+      allowNull: false
+    },
+    includedServices: {
+      type: DataTypes.JSON,
+      allowNull: true
     }
   }, {
     // Model options

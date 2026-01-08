@@ -1,0 +1,19 @@
+{
+    "welcome": "مرحبًا بكم في نظام الحجز",
+    "book_appointment": "احجز موعدًا",
+    "services": "خدمات",
+    "gallery": "معرض الصور",
+    "login": "تسجيل الدخول",
+    "register": "تسجيل",
+    "dashboard": "لوحة القيادة",
+    "logout": "تسجيل الخروج",
+    "profile": "الملف الشخصي",
+    "my_bookings": "حجوزاتي",
+    "admin_dashboard": "لوحة المشرف",
+    "staff_dashboard": "لوحة الموظفين",
+    "language": "لغة",
+    "select_language": "اختر اللغة",
+    "english": "إنجليزي",
+    "spanish": "إسباني",
+    "arabic": "عربي"
+}

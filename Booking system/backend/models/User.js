@@ -70,11 +70,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-   isVerified: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false
-  },
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
     verificationToken: {
       type: DataTypes.STRING,
       allowNull: true
@@ -118,6 +118,11 @@ module.exports = (sequelize, DataTypes) => {
         model: 'branches', // This references the 'branches' table
         key: 'id'
       }
+    },
+    loyaltyPoints: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      allowNull: false
     }
   }, {
     // Model options
@@ -139,12 +144,12 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   // Instance method to check password
-  User.prototype.matchPassword = async function(enteredPassword) {
+  User.prototype.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
   };
 
   // Instance method to generate JWT token
-  User.prototype.generateToken = function() {
+  User.prototype.generateToken = function () {
     return jwt.sign(
       { id: this.id, role: this.role },
       process.env.JWT_SECRET,
@@ -153,7 +158,7 @@ module.exports = (sequelize, DataTypes) => {
   };
 
   // Instance method to generate reset password token
-  User.prototype.getResetPasswordToken = function() {
+  User.prototype.getResetPasswordToken = function () {
     // Generate token
     const resetToken = crypto.randomBytes(20).toString('hex');
 

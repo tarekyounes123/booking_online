@@ -15,10 +15,15 @@ import {
   CircularProgress,
   RadioGroup,
   FormControlLabel,
-  Radio
+  Radio,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText
 } from '@mui/material';
 import { useSearchParams } from 'react-router-dom';
-import { appointmentAPI, serviceAPI, staffAPI } from '../services/api';
+import { appointmentAPI, serviceAPI, staffAPI, waitingListAPI } from '../services/api';
 
 const NewAppointmentPage = () => {
   const [searchParams] = useSearchParams();
@@ -36,7 +41,13 @@ const NewAppointmentPage = () => {
   const [success, setSuccess] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
+  // Waiting List State
+  const [waitingListOpen, setWaitingListOpen] = useState(false);
+  const [waitingTime, setWaitingTime] = useState('');
+  const [waitingNotes, setWaitingNotes] = useState('');
+
   useEffect(() => {
+    // ... existing useEffects
     const fetchServices = async () => {
       try {
         const res = await serviceAPI.getServices();
@@ -81,10 +92,10 @@ const NewAppointmentPage = () => {
 
   const fetchAvailableSlots = async () => {
     if (!selectedService || !selectedDate) return;
-    
+
     setSlotsLoading(true);
     setError('');
-    
+
     try {
       const slotsRes = await appointmentAPI.getAvailableSlots(
         selectedService,
@@ -160,6 +171,25 @@ const NewAppointmentPage = () => {
     }
   };
 
+  const handleJoinWaitingList = async () => {
+    try {
+      setLoading(true);
+      await waitingListAPI.join({
+        serviceId: selectedService,
+        date: selectedDate,
+        preferredTime: waitingTime,
+        notes: waitingNotes
+      });
+      setWaitingListOpen(false);
+      setSuccess('Successfully joined wating list! We will notify you if a slot opens up.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to join waiting list');
+      setWaitingListOpen(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Typography component="h1" variant="h4" gutterBottom>
@@ -174,7 +204,7 @@ const NewAppointmentPage = () => {
 
       {success && (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Appointment booked successfully! You will receive a confirmation email.
+          {typeof success === 'string' ? success : 'Appointment booked successfully! You will receive a confirmation email.'}
         </Alert>
       )}
 
@@ -264,6 +294,23 @@ const NewAppointmentPage = () => {
                 )}
               </Select>
             </FormControl>
+
+            {/* Waiting List Button */}
+            {selectedDate && !slotsLoading && availableSlots.length === 0 && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2" color="error" gutterBottom>
+                  No slots available for this date.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  onClick={() => setWaitingListOpen(true)}
+                >
+                  Join Waiting List
+                </Button>
+              </Box>
+            )}
           </Grid>
 
           <Grid item xs={12}>
@@ -307,7 +354,7 @@ const NewAppointmentPage = () => {
               {loading ? (
                 <>
                   <CircularProgress size={20} sx={{ mr: 1 }} />
-                  Booking...
+                  Processing...
                 </>
               ) : (
                 'Book Appointment'
@@ -316,6 +363,37 @@ const NewAppointmentPage = () => {
           </Grid>
         </Grid>
       </Paper>
+
+      {/* Waiting List Dialog */}
+      <Dialog open={waitingListOpen} onClose={() => setWaitingListOpen(false)}>
+        <DialogTitle>Join Waiting List</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Join the waiting list for {services.find(s => s.id === parseInt(selectedService))?.name} on {selectedDate}. We will notify you if a slot becomes available.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Preferred Time (e.g., Morning, 2pm)"
+            fullWidth
+            variant="standard"
+            value={waitingTime}
+            onChange={(e) => setWaitingTime(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Notes"
+            fullWidth
+            variant="standard"
+            value={waitingNotes}
+            onChange={(e) => setWaitingNotes(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWaitingListOpen(false)}>Cancel</Button>
+          <Button onClick={handleJoinWaitingList}>Join</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

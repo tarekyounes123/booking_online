@@ -1,0 +1,19 @@
+{
+    "welcome": "Welcome to Booking System",
+    "book_appointment": "Book Appointment",
+    "services": "Services",
+    "gallery": "Gallery",
+    "login": "Login",
+    "register": "Register",
+    "dashboard": "Dashboard",
+    "logout": "Logout",
+    "profile": "Profile",
+    "my_bookings": "My Bookings",
+    "admin_dashboard": "Admin Dashboard",
+    "staff_dashboard": "Staff Dashboard",
+    "language": "Language",
+    "select_language": "Select Language",
+    "english": "English",
+    "spanish": "Spanish",
+    "arabic": "Arabic"
+}

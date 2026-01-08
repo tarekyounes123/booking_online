@@ -6,7 +6,9 @@ const {
   updateStaff,
   deleteStaff,
   getStaffAppointments,
-  getStaffByBranch
+  getStaffByBranch,
+  getStaffSchedule,
+  updateStaffSchedule
 } = require('../controllers/staffController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -30,5 +32,10 @@ router
 router
   .route('/branch/:branchId')
   .get(getStaffByBranch);
+
+router
+  .route('/:id/schedule')
+  .get(protect, getStaffSchedule)
+  .put(protect, updateStaffSchedule);
 
 module.exports = router;

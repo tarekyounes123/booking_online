@@ -63,6 +63,8 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/newsletter', require('./routes/newsletter'));
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/webhooks', require('./routes/webhooks'));
+app.use('/api/waiting-list', require('./routes/waitingList'));
+app.use('/api/theme', require('./routes/theme'));
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));

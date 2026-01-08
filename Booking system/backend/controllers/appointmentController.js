@@ -1,4 +1,6 @@
 const { Appointment, User, Service, Staff, Payment, Branch } = require('../models');
+const StaffSchedule = require('../models/StaffSchedule'); // Direct import to avoid circular dependency issues if any
+const notificationService = require('../utils/notificationService');
 const { Op } = require('sequelize');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
@@ -135,7 +137,7 @@ exports.getAppointments = asyncHandler(async (req, res, next) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'loyaltyPoints']
         },
         {
           model: Service,
@@ -162,7 +164,7 @@ exports.getAppointments = asyncHandler(async (req, res, next) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'loyaltyPoints']
         },
         {
           model: Service,
@@ -178,7 +180,7 @@ exports.getAppointments = asyncHandler(async (req, res, next) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'loyaltyPoints']
         },
         {
           model: Service,
@@ -215,7 +217,7 @@ exports.getAppointment = asyncHandler(async (req, res, next) => {
     include: [
       {
         model: User,
-        attributes: ['id', 'firstName', 'lastName', 'email', 'phone']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'loyaltyPoints']
       },
       {
         model: Service,
@@ -332,7 +334,7 @@ exports.createAppointment = asyncHandler(async (req, res, next) => {
 
       if (appointmentDetails) {
         // Create calendar events for the appointment
-        await createCalendarEvent(appointmentDetails, ['google']);
+        await createCalendarEvent(appointmentDetails, ['google', 'outlook', 'facebook']);
         console.log(`Calendar events created for appointment ${appointmentDetails.id}`);
       }
     } catch (error) {
@@ -408,13 +410,18 @@ exports.createAppointment = asyncHandler(async (req, res, next) => {
           The Booking System Team
         `;
 
-        await sendEmail({
-          email: customer.email,
-          subject: 'Your Appointment Confirmation',
-          message
-        });
+        try {
+          await notificationService.sendAppointmentConfirmation(customer, appointmentDetails, service);
 
-        console.log(`Appointment confirmation email sent to ${customer.email}`);
+          await sendEmail({
+            email: customer.email,
+            subject: 'Appointment Confirmation',
+            message
+          });
+          console.log(`Appointment confirmation email sent to ${customer.email}`);
+        } catch (err) {
+          console.error('Error sending appointment confirmation:', err);
+        }
       }
     } catch (error) {
       console.error('Could not send appointment confirmation email. Error:', error);
@@ -581,11 +588,11 @@ exports.updateAppointment = asyncHandler(async (req, res, next) => {
     if (updateData.startTime !== undefined || updateData.endTime !== undefined) {
       // Use existing values if not being updated, ensuring proper format
       const finalStartTime = updateData.startTime !== undefined ? updateData.startTime :
-                            appointment.startTime && appointment.startTime.length === 5 ?
-                            appointment.startTime + ':00' : appointment.startTime;
+        appointment.startTime && appointment.startTime.length === 5 ?
+          appointment.startTime + ':00' : appointment.startTime;
       const finalEndTime = updateData.endTime !== undefined ? updateData.endTime :
-                          appointment.endTime && appointment.endTime.length === 5 ?
-                          appointment.endTime + ':00' : appointment.endTime;
+        appointment.endTime && appointment.endTime.length === 5 ?
+          appointment.endTime + ':00' : appointment.endTime;
 
       // Only validate if both values exist and are not null
       if (finalStartTime && finalEndTime) {
@@ -684,19 +691,19 @@ exports.updateAppointment = asyncHandler(async (req, res, next) => {
     // The model has allowNull: false for both startTime and endTime
     // If we're updating one time field, we must include the other with its current value
     if (updateData.hasOwnProperty('startTime') && !updateData.hasOwnProperty('endTime')) {
-        // If updating startTime but not endTime, include current endTime
-        updateData.endTime = appointment.endTime;
-        // Ensure it's in correct format
-        if (updateData.endTime && updateData.endTime.length === 5) {
-            updateData.endTime = updateData.endTime + ':00';
-        }
+      // If updating startTime but not endTime, include current endTime
+      updateData.endTime = appointment.endTime;
+      // Ensure it's in correct format
+      if (updateData.endTime && updateData.endTime.length === 5) {
+        updateData.endTime = updateData.endTime + ':00';
+      }
     } else if (updateData.hasOwnProperty('endTime') && !updateData.hasOwnProperty('startTime')) {
-        // If updating endTime but not startTime, include current startTime
-        updateData.startTime = appointment.startTime;
-        // Ensure it's in correct format
-        if (updateData.startTime && updateData.startTime.length === 5) {
-            updateData.startTime = updateData.startTime + ':00';
-        }
+      // If updating endTime but not startTime, include current startTime
+      updateData.startTime = appointment.startTime;
+      // Ensure it's in correct format
+      if (updateData.startTime && updateData.startTime.length === 5) {
+        updateData.startTime = updateData.startTime + ':00';
+      }
     }
     // If both or neither time fields are being updated, no additional action needed
 
@@ -721,7 +728,7 @@ exports.updateAppointment = asyncHandler(async (req, res, next) => {
 
         if (appointmentDetails) {
           // Update calendar events for the appointment
-          await updateCalendarEvent(appointmentDetails, ['google']);
+          await updateCalendarEvent(appointmentDetails, ['google', 'outlook', 'facebook']);
           console.log(`Calendar events updated for appointment ${appointmentDetails.id}`);
         }
       } catch (error) {
@@ -761,6 +768,100 @@ exports.updateAppointment = asyncHandler(async (req, res, next) => {
     }, 0);
     // --- End of Webhook Logic ---
 
+    // --- LOYALTY POINTS SYNC ---
+    // If status is 'completed', ensure payment is completed and award points
+    if (updatedAppointment.status === 'completed') {
+      console.log(`[DEBUG] Appointment ${updatedAppointment.id} updated to completed. Checking payment...`);
+      try {
+        const { Payment, User } = require('../models'); // Ensure models are available
+        // Find associated payment
+        let payment = await Payment.findOne({
+          where: { appointmentId: updatedAppointment.id }
+        });
+
+        // If no payment exists, create one automatically
+        if (!payment) {
+          console.log(`[DEBUG] No payment found for appointment ${updatedAppointment.id}. Creating payment record...`);
+
+          const t = await require('../models').sequelize.transaction();
+          try {
+            // Get the appointment price (use discounted price if available, otherwise original price)
+            const finalAmount = updatedAppointment.discountedPrice || updatedAppointment.originalPrice;
+
+            payment = await Payment.create({
+              appointmentId: updatedAppointment.id,
+              userId: updatedAppointment.userId,
+              amount: finalAmount,
+              originalAmount: updatedAppointment.originalPrice,
+              discountAmount: updatedAppointment.discountAmount || 0,
+              promotionId: updatedAppointment.promotionId || null,
+              currency: 'usd',
+              paymentMethod: updatedAppointment.paymentMethod || 'cash',
+              paymentIntentId: null,
+              status: 'completed', // Mark as completed since appointment is completed
+              pointsAwarded: false,
+              paidAt: new Date() // Set payment timestamp
+            }, { transaction: t });
+
+            console.log(`[DEBUG] Created payment ${payment.id} with amount ${payment.amount}`);
+            await t.commit();
+          } catch (err) {
+            await t.rollback();
+            console.error('[DEBUG] Failed to create payment:', err);
+            throw err; // Re-throw to be caught by outer try-catch
+          }
+        }
+
+        if (payment) {
+          console.log(`[DEBUG] Found payment ${payment.id} with status: ${payment.status} and pointsAwarded: ${payment.pointsAwarded}`);
+
+          // Check if we need to award points (either not completed yet, OR completed but points missing)
+          if (payment.status !== 'completed' || !payment.pointsAwarded) {
+            console.log(`[DEBUG] Conditions met for processing (Status: ${payment.status}, Awarded: ${payment.pointsAwarded})`);
+
+            const t = await require('../models').sequelize.transaction();
+            try {
+              // 1. Update Payment Status if needed
+              if (payment.status !== 'completed') {
+                await payment.update({
+                  status: 'completed',
+                  paidAt: new Date() // Set payment timestamp
+                }, { transaction: t });
+                console.log(`[DEBUG] Updated payment status to completed.`);
+              }
+
+              // 2. Award Points if not already awarded
+              if (!payment.pointsAwarded) {
+                const pointsEarned = Math.floor(payment.amount);
+                console.log(`[DEBUG] Points to earn: ${pointsEarned}`);
+
+                if (pointsEarned > 0) {
+                  const user = await User.findByPk(updatedAppointment.userId);
+                  if (user) {
+                    await user.increment('loyaltyPoints', { by: pointsEarned, transaction: t });
+                    console.log(`[DEBUG] Awarded ${pointsEarned} points to user ${user.id} (${user.email})`);
+                  }
+                }
+                // Mark points as awarded
+                await payment.update({ pointsAwarded: true }, { transaction: t });
+              }
+
+              await t.commit();
+              console.log(`[DEBUG] Transaction committed.`);
+            } catch (err) {
+              await t.rollback();
+              console.error('[DEBUG] Failed to process payment/points:', err);
+            }
+          } else {
+            console.log(`[DEBUG] Payment completed and points already awarded. Skipping.`);
+          }
+        }
+      } catch (error) {
+        console.error('[DEBUG] Error in loyalty points sync:', error);
+      }
+    }
+    // --- END LOYALTY POINTS SYNC ---
+
     res.status(200).json({
       success: true,
       data: updatedAppointment
@@ -782,7 +883,7 @@ exports.updateAppointment = asyncHandler(async (req, res, next) => {
 // @access    Private
 exports.updateAppointmentStatus = asyncHandler(async (req, res, next) => {
   const allowedStatuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
-  
+
   if (!allowedStatuses.includes(req.body.status)) {
     return next(
       new ErrorResponse(
@@ -802,7 +903,7 @@ exports.updateAppointmentStatus = asyncHandler(async (req, res, next) => {
 
   // Authorization check - only admin or assigned staff can update status
   if (
-    req.user.role !== 'admin' && 
+    req.user.role !== 'admin' &&
     (req.user.role !== 'staff' || appointment.staffId !== req.user.Staff?.id)
   ) {
     return next(
@@ -814,6 +915,118 @@ exports.updateAppointmentStatus = asyncHandler(async (req, res, next) => {
   }
 
   appointment = await appointment.update({ status: req.body.status });
+
+  // If status is cancelled, check waiting list AND notify user
+  if (req.body.status === 'cancelled') {
+    // Notify User
+    try {
+      const user = await User.findByPk(appointment.userId);
+      const service = await Service.findByPk(appointment.serviceId);
+      await notificationService.sendAppointmentcancellation(user, appointment, service);
+    } catch (e) {
+      console.error('Failed to send cancellation SMS', e);
+    }
+
+    // Check Waiting List
+    setTimeout(() => {
+      const { checkAndNotifyWaitingList } = require('./waitingListController');
+      checkAndNotifyWaitingList(appointment.serviceId, appointment.date);
+    }, 1000);
+  }
+
+  // --- LOYALTY POINTS SYNC ---
+  // If status is 'completed', ensure payment is completed and award points
+  if (req.body.status === 'completed') {
+    console.log(`[DEBUG] Appointment ${appointment.id} marked as completed. Checking payment...`);
+    try {
+      // Find associated payment
+      let payment = await Payment.findOne({
+        where: { appointmentId: appointment.id }
+      });
+
+      // If no payment exists, create one automatically
+      if (!payment) {
+        console.log(`[DEBUG] No payment found for appointment ${appointment.id}. Creating payment record...`);
+
+        const t = await require('../models').sequelize.transaction();
+        try {
+          // Get the appointment price (use discounted price if available, otherwise original price)
+          const finalAmount = appointment.discountedPrice || appointment.originalPrice;
+
+          payment = await Payment.create({
+            appointmentId: appointment.id,
+            userId: appointment.userId,
+            amount: finalAmount,
+            originalAmount: appointment.originalPrice,
+            discountAmount: appointment.discountAmount || 0,
+            promotionId: appointment.promotionId || null,
+            currency: 'usd',
+            paymentMethod: appointment.paymentMethod || 'cash',
+            paymentIntentId: null,
+            status: 'completed', // Mark as completed since appointment is completed
+            pointsAwarded: false,
+            paidAt: new Date() // Set payment timestamp
+          }, { transaction: t });
+
+          console.log(`[DEBUG] Created payment ${payment.id} with amount ${payment.amount}`);
+          await t.commit();
+        } catch (err) {
+          await t.rollback();
+          console.error('[DEBUG] Failed to create payment:', err);
+          throw err; // Re-throw to be caught by outer try-catch
+        }
+      }
+
+      if (payment) {
+        console.log(`[DEBUG] Found payment ${payment.id} with status: ${payment.status} and pointsAwarded: ${payment.pointsAwarded}`);
+
+        // Check if we need to award points (either not completed yet, OR completed but points missing)
+        if (payment.status !== 'completed' || !payment.pointsAwarded) {
+          console.log(`[DEBUG] Conditions met for processing (Status: ${payment.status}, Awarded: ${payment.pointsAwarded})`);
+
+          const t = await require('../models').sequelize.transaction();
+          try {
+            // 1. Update Payment Status if needed
+            if (payment.status !== 'completed') {
+              await payment.update({
+                status: 'completed',
+                paidAt: new Date() // Set payment timestamp
+              }, { transaction: t });
+              console.log(`[DEBUG] Updated payment status to completed.`);
+            }
+
+            // 2. Award Points if not already awarded
+            if (!payment.pointsAwarded) {
+              // Use the final amount paid (discounted price) for points
+              const pointsEarned = Math.floor(payment.amount);
+              console.log(`[DEBUG] Points to earn from amount ${payment.amount}: ${pointsEarned}`);
+
+              if (pointsEarned > 0) {
+                const user = await User.findByPk(appointment.userId);
+                if (user) {
+                  await user.increment('loyaltyPoints', { by: pointsEarned, transaction: t });
+                  console.log(`[DEBUG] Awarded ${pointsEarned} points to user ${user.id} (${user.email})`);
+                }
+              }
+              // Mark points as awarded
+              await payment.update({ pointsAwarded: true }, { transaction: t });
+            }
+
+            await t.commit();
+            console.log(`[DEBUG] Transaction committed.`);
+          } catch (err) {
+            await t.rollback();
+            console.error('[DEBUG] Failed to process payment/points:', err);
+          }
+        } else {
+          console.log(`[DEBUG] Payment completed and points already awarded. Skipping.`);
+        }
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error in loyalty points sync:', error);
+    }
+  }
+  // --- END LOYALTY POINTS SYNC ---
 
   res.status(200).json({
     success: true,
@@ -861,7 +1074,7 @@ exports.deleteAppointment = asyncHandler(async (req, res, next) => {
 
       if (appointmentDetails) {
         // Delete calendar events for the appointment
-        await deleteCalendarEvent(appointmentDetails, ['google']);
+        await deleteCalendarEvent(appointmentDetails, ['google', 'outlook', 'facebook']);
         console.log(`Calendar events deleted for appointment ${appointmentDetails.id}`);
       }
     } catch (error) {
@@ -904,6 +1117,12 @@ exports.deleteAppointment = asyncHandler(async (req, res, next) => {
 
   await appointment.destroy();
 
+  // Check Waiting List
+  setTimeout(() => {
+    const { checkAndNotifyWaitingList } = require('./waitingListController');
+    checkAndNotifyWaitingList(appointment.serviceId, appointment.date);
+  }, 1000);
+
   res.status(200).json({
     success: true,
     data: {}
@@ -937,16 +1156,49 @@ exports.getAvailableSlots = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Define business hours (9 AM to 6 PM as example)
-  const businessStartHour = 9;
-  const businessEndHour = 18;
+  // Define default business hours (fallback)
+  let businessStartMinutes = 9 * 60; // 9 AM
+  let businessEndMinutes = 18 * 60; // 6 PM
   const slotDuration = 30; // 30 minutes per slot
+
+  // Check for Staff Schedule if staffId is provided
+  if (staffId && !isNaN(staffId)) {
+    const dayOfWeek = new Date(date).getDay(); // 0 (Sunday) - 6 (Saturday)
+
+    const schedule = await StaffSchedule.findOne({
+      where: {
+        staffId: staffId,
+        dayOfWeek: dayOfWeek
+      }
+    });
+
+    if (schedule) {
+      if (schedule.isDayOff) {
+        // Return empty slots if it's a day off
+        return res.status(200).json({
+          success: true,
+          date,
+          serviceId: parseInt(serviceId),
+          staffId: parseInt(staffId),
+          availableSlots: []
+        });
+      }
+
+      // Parse schedule times
+      const [startH, startM] = schedule.startTime.split(':').map(Number);
+      const [endH, endM] = schedule.endTime.split(':').map(Number);
+
+      businessStartMinutes = startH * 60 + startM;
+      businessEndMinutes = endH * 60 + endM;
+    }
+  }
 
   // Get all appointments for the given date and staff
   const existingAppointments = await Appointment.findAll({
     where: {
       date: date,
-      staffId: staffId && !isNaN(staffId) ? parseInt(staffId) : null // If no staff specified or invalid staffId, find appointments for any staff
+      staffId: staffId && !isNaN(staffId) ? parseInt(staffId) : null,
+      status: { [Op.notIn]: ['cancelled', 'no-show'] } // Don't count cancelled appointments
     },
     attributes: ['startTime', 'endTime']
   });
@@ -971,8 +1223,8 @@ exports.getAvailableSlots = asyncHandler(async (req, res, next) => {
 
   // Generate available time slots
   const availableSlots = [];
-  let currentTime = businessStartHour * 60; // Start at 9 AM in minutes
-  const endTime = businessEndHour * 60; // End at 6 PM in minutes
+  let currentTime = businessStartMinutes;
+  const endTime = businessEndMinutes;
 
   while (currentTime < endTime) {
     const slotEnd = currentTime + service.duration;
