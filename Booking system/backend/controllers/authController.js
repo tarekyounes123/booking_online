@@ -510,7 +510,7 @@ exports.forgotPassword = async (req, res, next) => {
   });
 
   if (!user) {
-    return next(new ErrorResponse('There is no user with that email', 404));
+    return next(new ErrorResponse('Account not found', 404));
   }
 
   // Generate 6-digit code

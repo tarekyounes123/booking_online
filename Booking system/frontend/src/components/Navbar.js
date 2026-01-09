@@ -15,7 +15,13 @@ import {
   Divider,
   useTheme,
   ThemeProvider,
-  createTheme
+  createTheme,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -74,8 +80,8 @@ const Navbar = () => {
       }}
     >
       <Container maxWidth="xl">
-        <Toolbar disableGutters sx={{ justifyContent: 'space-between', minHeight: '80px !important' }}>
-          {/* Logo Section */}
+        <Toolbar disableGutters sx={{ minHeight: '80px !important' }}>
+          {/* Logo Section - Left aligned */}
           <Box
             component={Link}
             to="/"
@@ -85,7 +91,8 @@ const Navbar = () => {
               textDecoration: 'none',
               gap: 1.5,
               transition: 'transform 0.2s',
-              '&:hover': { transform: 'scale(1.02)' }
+              '&:hover': { transform: 'scale(1.02)' },
+              flex: { xs: '0 0 auto', md: '0 0 auto' }
             }}
           >
             <Box sx={{
@@ -118,8 +125,16 @@ const Navbar = () => {
             </Typography>
           </Box>
 
-          {/* Desktop Navigation */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1, background: 'rgba(255,255,255,0.03)', p: 0.5, borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          {/* Desktop Navigation - Center aligned */}
+          <Box sx={{
+            display: { xs: 'none', md: 'flex' },
+            gap: 1,
+            background: 'rgba(255,255,255,0.03)',
+            p: 0.5,
+            borderRadius: '16px',
+            border: '1px solid rgba(255,255,255,0.05)',
+            mx: 'auto'  // This centers the navigation
+          }}>
             {navItems.map((item) => (
               <Button
                 key={item.label}
@@ -145,108 +160,184 @@ const Navbar = () => {
             ))}
           </Box>
 
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            {/* Language Switcher */}
-            <IconButton
-              onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en')}
-              sx={{
-                color: 'rgba(255, 255, 255, 0.6)',
-                background: 'rgba(255,255,255,0.03)',
-                borderRadius: '12px',
-                '&:hover': { background: 'rgba(255,255,255,0.08)', color: 'white' }
-              }}
-            >
-              <LanguageIcon />
-            </IconButton>
+          {/* Mobile Navigation Button - Right aligned on mobile */}
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            flex: { xs: '1 1 auto', md: '0 0 auto' }
+          }}>
+            {/* Mobile menu button only shows on small screens */}
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }}>
+              <IconButton
+                edge="start"
+                color="inherit"
+                aria-label="menu"
+                onClick={() => setMobileOpen(true)}
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  background: 'rgba(255,255,255,0.03)',
+                  borderRadius: '12px',
+                  '&:hover': { background: 'rgba(255,255,255,0.08)', color: 'white' }
+                }}
+              >
+                <MenuIcon />
+              </IconButton>
+            </Box>
 
-            {user ? (
-              <>
-                <IconButton
-                  onClick={handleMenu}
-                  sx={{
-                    p: 0.5,
-                    border: '1.5px solid rgba(129, 140, 248, 0.3)',
-                    borderRadius: '14px',
-                    transition: 'all 0.2s',
-                    '&:hover': { borderColor: '#818cf8', transform: 'translateY(-1px)' }
-                  }}
-                >
-                  <Avatar
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              {/* Language Switcher */}
+              <IconButton
+                onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en')}
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  background: 'rgba(255,255,255,0.03)',
+                  borderRadius: '12px',
+                  '&:hover': { background: 'rgba(255,255,255,0.08)', color: 'white' }
+                }}
+              >
+                <LanguageIcon />
+              </IconButton>
+
+              {user ? (
+                <>
+                  <IconButton
+                    onClick={handleMenu}
                     sx={{
-                      width: 34,
-                      height: 34,
-                      background: 'linear-gradient(135deg, #4f46e5 0%, #7e22ce 100%)',
-                      fontSize: '0.9rem',
-                      fontWeight: 700
+                      p: 0.5,
+                      border: '1.5px solid rgba(129, 140, 248, 0.3)',
+                      borderRadius: '14px',
+                      transition: 'all 0.2s',
+                      '&:hover': { borderColor: '#818cf8', transform: 'translateY(-1px)' }
                     }}
                   >
-                    {user.firstName?.charAt(0)}
-                  </Avatar>
-                </IconButton>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleClose}
-                  disableScrollLock
-                  PaperProps={{
-                    sx: {
-                      mt: 2,
-                      minWidth: 220,
-                      background: 'rgba(15, 23, 42, 0.85)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
-                      borderRadius: '20px',
-                      p: 1,
-                      '& .MuiMenuItem-root': {
-                        px: 2, py: 1.5, borderRadius: '12px', transition: 'all 0.2s', mb: 0.5,
-                        '&:hover': { background: 'rgba(255, 255, 255, 0.08)' }
+                    <Avatar
+                      sx={{
+                        width: 34,
+                        height: 34,
+                        background: 'linear-gradient(135deg, #4f46e5 0%, #7e22ce 100%)',
+                        fontSize: '0.9rem',
+                        fontWeight: 700
+                      }}
+                    >
+                      {user.firstName?.charAt(0)}
+                    </Avatar>
+                  </IconButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleClose}
+                    disableScrollLock
+                    PaperProps={{
+                      sx: {
+                        mt: 2,
+                        minWidth: 220,
+                        background: 'rgba(15, 23, 42, 0.85)',
+                        backdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+                        borderRadius: '20px',
+                        p: 1,
+                        '& .MuiMenuItem-root': {
+                          px: 2, py: 1.5, borderRadius: '12px', transition: 'all 0.2s', mb: 0.5,
+                          '&:hover': { background: 'rgba(255, 255, 255, 0.08)' }
+                        }
                       }
+                    }}
+                  >
+                    <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>
+                      <AccountCircle sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> {t('profile')}
+                    </MenuItem>
+                    {user.role === 'admin' && (
+                      <>
+                        <MenuItem onClick={() => { handleClose(); navigate('/admin'); }}>
+                          <DashboardIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Admin Dashboard
+                        </MenuItem>
+                        <MenuItem onClick={() => { handleClose(); navigate('/admin?tab=gallery'); }}>
+                          <GalleryIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Gallery Management
+                        </MenuItem>
+                      </>
+                    )}
+                    {user.role === 'staff' && (
+                      <MenuItem onClick={() => { handleClose(); navigate('/staff'); }}>
+                        <DashboardIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Staff Dashboard
+                      </MenuItem>
+                    )}
+                    <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
+                    <MenuItem onClick={handleLogout} sx={{ color: '#fb7185' }}>
+                      <LogoutIcon sx={{ mr: 2 }} /> {t('logout')}
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                <Button
+                  variant="contained"
+                  onClick={() => navigate('/login')}
+                  sx={{
+                    borderRadius: '14px',
+                    fontWeight: 800,
+                    px: 4,
+                    py: 1.2,
+                    fontSize: '0.95rem'
+                  }}
+                >
+                  Get Started
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        </Toolbar>
+      </Container>
+
+      {/* Mobile Navigation Drawer */}
+      <Drawer
+        variant="temporary"
+        anchor="right"
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile.
+        }}
+        sx={{
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: 280,
+            background: 'rgba(15, 23, 42, 0.9) !important',
+            backdropFilter: 'blur(20px)',
+            borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
+          },
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <List>
+            {navItems.map((item) => (
+              <ListItem key={item.label} disablePadding>
+                <ListItemButton
+                  component={Link}
+                  to={item.path}
+                  onClick={() => setMobileOpen(false)}
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    borderRadius: '12px',
+                    mb: 1,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    '&:hover': {
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      color: 'white'
                     }
                   }}
                 >
-                  <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>
-                    <AccountCircle sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> {t('profile')}
-                  </MenuItem>
-                  {user.role === 'admin' && (
-                    <>
-                      <MenuItem onClick={() => { handleClose(); navigate('/admin'); }}>
-                        <DashboardIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Admin Dashboard
-                      </MenuItem>
-                      <MenuItem onClick={() => { handleClose(); navigate('/admin?tab=gallery'); }}>
-                        <GalleryIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Gallery Management
-                      </MenuItem>
-                    </>
-                  )}
-                  {user.role === 'staff' && (
-                    <MenuItem onClick={() => { handleClose(); navigate('/staff'); }}>
-                      <DashboardIcon sx={{ mr: 2, opacity: 0.8, color: '#818cf8' }} /> Staff Dashboard
-                    </MenuItem>
-                  )}
-                  <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
-                  <MenuItem onClick={handleLogout} sx={{ color: '#fb7185' }}>
-                    <LogoutIcon sx={{ mr: 2 }} /> {t('logout')}
-                  </MenuItem>
-                </Menu>
-              </>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={() => navigate('/login')}
-                sx={{
-                  borderRadius: '14px',
-                  fontWeight: 800,
-                  px: 4,
-                  py: 1.2,
-                  fontSize: '0.95rem'
-                }}
-              >
-                Get Started
-              </Button>
-            )}
-          </Stack>
-        </Toolbar>
-      </Container>
+                  <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </Drawer>
     </AppBar>
   );
 };

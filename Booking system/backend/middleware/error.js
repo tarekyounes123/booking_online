@@ -27,8 +27,8 @@ const errorHandler = (err, req, res, next) => {
     error = new ErrorResponse(message, 400);
   }
 
-  // Handle API 404 not found
-  if (error.statusCode === 404 && req.originalUrl.startsWith('/api')) {
+  // Handle API 404 not found - only if no specific error message is already set
+  if (error.statusCode === 404 && req.originalUrl.startsWith('/api') && (!error.message || error.message === 'Not Found')) {
     error.message = 'API route not found';
   }
 
